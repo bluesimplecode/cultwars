@@ -95,7 +95,6 @@
 
   .separator { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 
-  .ai-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 20px; padding: 4px 10px; font-size: 10px; color: var(--gold); margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -141,12 +140,9 @@
 
         <div class="panel" style="margin-top:16px;">
           <div class="panel-title">Geschichte / Story</div>
-          <div class="ai-chip">✨ KI-Assistent aktiv</div>
 
           <label>Story-Text</label>
           <textarea id="f-story" placeholder="Die Geschichte dieser Figur..." oninput="updatePreview()"></textarea>
-
-          <button class="btn secondary" onclick="generateAIStory()">✨ Story generieren</button>
         </div>
       </div>
 
@@ -347,29 +343,6 @@ function updatePayload() {
   const fig = buildFigureData();
   const json = JSON.stringify(fig, null, 2);
   document.getElementById('nfc-payload').textContent = json;
-}
-
-async function generateAIStory() {
-  const name = document.getElementById('f-name').value;
-  if (!name) { alert('Bitte zuerst einen Namen eingeben.'); return; }
-  const btn = document.querySelector('#tab-create .btn.secondary');
-  btn.textContent = '⏳ Generiere...'; btn.disabled = true;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 1000,
-        messages: [{ role: 'user', content: `Schreibe eine kurze, mystische Hintergrundgeschichte (2-3 Sätze) für eine Spielfigur namens "${name}" in einem schachähnlichen Fantasy-Sammelkartenspiel. Nur den Text, keine Anführungszeichen, keine Überschriften.` }]
-      })
-    });
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || '';
-    document.getElementById('f-story').value = text;
-    updatePreview();
-  } catch(e) { document.getElementById('f-story').value = 'Fehler beim Generieren. API-Schlüssel prüfen.'; }
-  btn.textContent = '✨ Story generieren'; btn.disabled = false;
 }
 
 function saveFigure() {

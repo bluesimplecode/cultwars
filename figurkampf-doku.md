@@ -35,7 +35,6 @@
 
 **Admin-Generator** *(separate Datei, nicht verteilen)*
 - Figuren erstellen: Name, Emoji, Größe, Story, Bewegungsmuster
-- KI-generierte Story via Claude API
 - Figuren-Bibliothek (localStorage)
 - Fertige Figuren auf NFC-Tags schreiben (Web NFC API)
 - NFC-Tags testweise einlesen zur Verifikation
@@ -45,7 +44,7 @@
 ## Nicht-funktionale Anforderungen
 
 - **Plattform:** Android, Chrome (primär); alle anderen Browser mit Kamera als Fallback für QR-Scan
-- **Offline-fähig:** Keine Internetverbindung nötig für Spielbetrieb; Admin-Generator braucht Netz nur für KI-Story
+- **Offline-fähig:** Keine Internetverbindung nötig — weder für Spielbetrieb noch für den Admin-Generator
 - **Kein Server:** Alles lokal — localStorage für Persistenz, keine Backend-API
 - **Zwei Dateien:** `figuren-spiel.html` (Spiel) und `figuren-admin.html` (Generator); beide eigenständig
 - **Selbstenthalten:** QR-Bibliotheken sind eingebettet (kein CDN-Aufruf zur Laufzeit nötig)
@@ -95,7 +94,6 @@
 | Figur erstellen (Name, Emoji-Picker, Größe, Story) | ✅ |
 | 5×5 Bewegungsmuster per Klick editieren | ✅ |
 | Bewegungsmuster-Vorlagen (Läufer, Turm, Springer, König, Ring, Kreuz) | ✅ |
-| KI-Story-Generierung via Claude API | ✅ |
 | NFC-Tag beschreiben (Web NFC `write`) | ✅ (echter `NDEFReader.write()`-Aufruf, Simulation als Fallback) |
 | NFC-Tag einlesen zur Verifikation | ✅ (simuliert + API-ready) |
 | Figuren-Bibliothek in localStorage | ✅ |
@@ -152,4 +150,5 @@ Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcode
 | **Bluetooth-Datentransfer** | Web Bluetooth unterstützt kein Peer-to-Peer zwischen zwei Browser-Tabs auf verschiedenen Geräten; nur Central↔Peripheral-Verbindungen zu nativen BLE-Services möglich |
 | **WiFi Direct / Nearby Connections** | Reine Android-Native-APIs, nicht im Browser erreichbar |
 | **QR-Code als Hauptdatenaustausch via NFC-Tag als Zwischenspeicher** | NFC-Tags (NTAG215) haben mit 504 Bytes zu knapp Platz für große Aufstellungen; QR-Code auf Bildschirm ist einfacher und braucht keinen Extra-Tag |
-| **KI-Story im Spiel selbst** | Würde Internetverbindung im Spiel erfordern; bleibt im Admin-Tool |
+| **KI-Story im Spiel selbst** | Würde Internetverbindung im Spiel erfordern |
+| **KI-Story-Generierung im Admin-Tool** (`generateAIStory()`, Aufruf an `api.anthropic.com`) | Auf Wunsch entfernt; funktionierte ohnehin nur innerhalb der Claude-Sandbox (kein eingebetteter API-Key, direkter Browser-Call scheiterte außerhalb an CORS/Auth). Story-Text wird jetzt ausschließlich manuell eingegeben |
