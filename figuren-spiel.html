@@ -521,6 +521,12 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .move-cell.self { background: var(--accent); }
   .close-btn { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: var(--r); color: #fff; font-size: 15px; font-weight: 600; margin-top: 20px; cursor: pointer; }
 
+  /* Emoji-Auswahl für das höchste Cultwesen (spielerseitig, kein Admin-Tool nötig) */
+  .king-emoji-pick { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 4px; }
+  .kep { aspect-ratio: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; }
+  .kep.sel { border-color: var(--gold); background: rgba(245,158,11,0.15); }
+  .king-emoji-custom { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px; margin-top: 8px; text-align: center; }
+
   /* Game board */
   .board-wrap { overflow-x: auto; padding: 16px; display: flex; justify-content: center; }
   .board-outer { position: relative; display: inline-block; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; line-height: 0; }
@@ -742,6 +748,12 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     <div class="modal-name" id="m-name"></div>
     <div class="modal-size-badge" id="m-size"></div>
 
+    <div id="m-king-emoji-block" style="display:none;">
+      <div class="modal-section">👑 Emoji des höchsten Cultwesens</div>
+      <div class="king-emoji-pick" id="king-emoji-pick"></div>
+      <input type="text" id="king-emoji-custom" class="king-emoji-custom" placeholder="oder eigenes Emoji eingeben" maxlength="2">
+    </div>
+
     <div class="modal-section">Geschichte</div>
     <div class="modal-story" id="m-story"></div>
 
@@ -873,8 +885,8 @@ const FIGURES_CATALOG = [
   { id:8, name:'Sternenelf', emoji:'🧝', size:4, moveMode:'jump',
     story:'Hüter der Himmelskarten. Sieht die Zukunft in Sternkonstellationen.',
     move:[[0,0,1,0,0],[0,1,1,1,0],[1,1,2,1,1],[0,1,1,1,0],[0,0,1,0,0]] },
-  { id:9, name:'Cult-Imperator', emoji:'👑', size:1, moveMode:'jump', isKing:true,
-    story:'Das oberste Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt er, zerfällt die gesamte Ordnung.',
+  { id:9, name:'Höchstes Cultwesen', emoji:'👑', size:1, moveMode:'jump', isKing:true,
+    story:'Das höchste Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt es, zerfällt die gesamte Ordnung.',
     move:[[0,0,0,0,0],[0,1,1,1,0],[0,1,2,1,0],[0,1,1,1,0],[0,0,0,0,0]] },
 ];
 
@@ -931,7 +943,10 @@ let FIGURES = [];
 function rebuildFigures() {
   FIGURES = FIGURES_CATALOG.map(f => {
     const owned = saveData.collection[f.id] || { owned:false, kills:0, uses:0, isNew:false };
-    return { ...f, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned };
+    // Das höchste Cultwesen lässt sein Emoji spielerseitig frei wählen (kein
+    // Admin-Tool nötig) — der Override wird pro Spielstand gespeichert.
+    const emoji = owned.emoji || f.emoji;
+    return { ...f, emoji, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned };
   });
 }
 rebuildFigures();
@@ -1078,12 +1093,33 @@ function renderFigSelect() {
 
 function sizeLabel(s) { return s===1?'1×1':s===4?'2×2':'3×3'; }
 
+// Emoji-Auswahl für das höchste Cultwesen — thematisch passend, aber frei
+// ergänzbar über das eigene-Emoji-Feld darunter.
+const KING_EMOJIS = ['👑','🔱','⚜️','🗿','👁️','🕯️','🌑','⚡','🩸','💀','🐍','🦇','🌟','🎭','🔥','🖤'];
+
 function openFigModal(f) {
   currentFig = f;
   document.getElementById('m-emoji').textContent = f.emoji;
   document.getElementById('m-name').textContent = (f.isKing ? '👑 ' : '') + f.name;
   document.getElementById('m-size').textContent = 'Größe: ' + sizeLabel(f.size) + ' · ' + (f.moveMode==='slide' ? 'Gleitet' : 'Springt');
   document.getElementById('m-story').textContent = f.story;
+
+  const kingBlock = document.getElementById('m-king-emoji-block');
+  kingBlock.style.display = f.isKing ? 'block' : 'none';
+  if (f.isKing) {
+    const pick = document.getElementById('king-emoji-pick');
+    pick.innerHTML = '';
+    KING_EMOJIS.forEach(e => {
+      const d = document.createElement('div');
+      d.className = 'kep' + (e===f.emoji ? ' sel' : '');
+      d.textContent = e;
+      d.onclick = () => setKingEmoji(f.id, e);
+      pick.appendChild(d);
+    });
+    const custom = document.getElementById('king-emoji-custom');
+    custom.value = KING_EMOJIS.includes(f.emoji) ? '' : f.emoji;
+    custom.onchange = () => { const v = custom.value.trim(); if (v) setKingEmoji(f.id, v); };
+  }
 
   const mc = document.getElementById('m-move');
   mc.innerHTML = '';
@@ -1099,6 +1135,21 @@ function openFigModal(f) {
     <div class="stat-row"><div class="stat-emoji">🎯</div><div class="stat-info"><div class="stat-name">Mal gewählt</div><div class="stat-nums">${f.uses}</div></div></div>`;
 
   document.getElementById('fig-modal').classList.add('open');
+}
+
+// Speichert das vom Spieler gewählte Emoji für sein höchstes Cultwesen
+// (nur spielerseitig, keine Admin-Tool-Interaktion nötig) und aktualisiert
+// alle Stellen, an denen die Figur angezeigt wird.
+function setKingEmoji(figId, emoji) {
+  if (!saveData.collection[figId]) return;
+  saveData.collection[figId].emoji = emoji;
+  saveSave();
+  rebuildFigures();
+  const f = FIGURES.find(x => x.id === figId);
+  if (f) openFigModal(f);
+  renderCollection();
+  renderKodex();
+  if (document.getElementById('page-spiel').classList.contains('active')) renderFigSelect();
 }
 
 function closeFigModal(e) { if(e.target===document.getElementById('fig-modal')) closeModal(); }

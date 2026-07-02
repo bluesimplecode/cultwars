@@ -9,7 +9,8 @@
 - Jede Figur hat: Name, Emoji als Sprite, Größe (1×1 / 2×2 / 3×3 Felder), Bewegungsmuster (5×5 Grid wie Schach), Bewegungsart (springt/gleitet), Story-Text
 - Neue, noch nicht gescannte Figuren sind im Kodex als `???` verschleiert sichtbar
 - Beim ersten Öffnen einer neu gescannten Figur verschwindet der NEU-Badge
-- Jeder Spieler besitzt zwingend einen König (das "oberste Cultwesen") — von Anfang an freigeschaltet, deutlich hervorgehoben (Sammlung, Kodex, Auswahl, Spielbrett)
+- Jeder Spieler besitzt zwingend einen König: das **Höchste Cultwesen** (Katalog-ID 9) — von Anfang an freigeschaltet, muss nie per NFC gefunden werden, deutlich hervorgehoben (Sammlung, Kodex, Auswahl, Spielbrett)
+- Emoji des höchsten Cultwesens ist spielerseitig frei wählbar (Figur-Detailansicht, kein Admin-Tool nötig) — Auswahl aus thematischer Palette oder eigenes Emoji, Name und Bewegungsmuster (identisch zur "König"-Vorlage) bleiben fix
 
 **Spielen — Solo**
 - Spielfeldgröße wählen (6×6, 8×8, 10×10)
@@ -92,6 +93,8 @@
 | König-Tod beendet die Schlacht sofort — unabhängig von übrigen Figuren | ✅ |
 | König-Hervorhebung: goldener Rahmen, Krone, Puls-Glow auf Spielbrett | ✅ |
 | Solo-Gegner-KI bekommt garantiert ebenfalls einen König | ✅ |
+| Höchstes Cultwesen (König, Katalog-ID 9) fest im Katalog, für jeden Spieler von Anfang an freigeschaltet | ✅ |
+| Emoji des höchsten Cultwesens spielerseitig wählbar (Figur-Detailansicht, Override in `saveData` gespeichert) | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
