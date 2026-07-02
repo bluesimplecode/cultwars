@@ -85,6 +85,8 @@
 | Sender-Figuren werden beim Host vertikal gespiegelt platziert | ✅ |
 | Warnung bei unbekannten Figuren-IDs im empfangenen QR-Code | ✅ |
 | Kamera-Ressource wird sauber freigegeben nach Scan-Abbruch | ✅ |
+| PWA: Manifest + Service Worker (installierbar, Offline-Caching) | ✅ |
+| App-Icon (192/512, maskable) + Favicon | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
@@ -94,7 +96,7 @@
 | 5×5 Bewegungsmuster per Klick editieren | ✅ |
 | Bewegungsmuster-Vorlagen (Läufer, Turm, Springer, König, Ring, Kreuz) | ✅ |
 | KI-Story-Generierung via Claude API | ✅ |
-| NFC-Tag beschreiben (Web NFC `write`) | ✅ (simuliert + API-ready) |
+| NFC-Tag beschreiben (Web NFC `write`) | ✅ (echter `NDEFReader.write()`-Aufruf, Simulation als Fallback) |
 | NFC-Tag einlesen zur Verifikation | ✅ (simuliert + API-ready) |
 | Figuren-Bibliothek in localStorage | ✅ |
 | JSON-Export aller Figuren | ✅ |
@@ -104,23 +106,25 @@
 
 ## Aktueller Stand
 
-Die App ist ein vollständig funktionsfähiger **Klick-Prototyp** im Browser. Alle Kern-Features sind implementiert und verbunden. Die wichtigsten Einschränkungen betreffen Hardware-APIs, die nur auf echten Android-Geräten in Chrome testbar sind:
+Die App ist ein vollständig funktionsfähiger **Klick-Prototyp** im Browser und als PWA installierbar. Alle Kern-Features sind implementiert und verbunden. Die wichtigsten Einschränkungen betreffen Hardware-APIs, die nur auf echten Android-Geräten in Chrome testbar sind:
 
-- **Web NFC** (`NDEFReader`) ist im Browser nur auf Android/Chrome verfügbar und kann in keinem anderen Kontext (Desktop, iOS, Claude-Vorschau) getestet werden. Der Fallback (zufälliger Simulations-Scan) springt automatisch ein.
+- **Web NFC** (`NDEFReader`, Lesen *und* Schreiben) ist im Browser nur auf Android/Chrome verfügbar und kann in keinem anderen Kontext (Desktop, iOS, Claude-Vorschau) getestet werden. Der Fallback (zufälliger Simulations-Scan bzw. simuliertes Schreiben) springt automatisch ein.
 - **QR-Scan** funktioniert browserübergreifend (nativ via `BarcodeDetector` in Chrome/Android, via eingebetteter `jsQR`-Bibliothek in Firefox/Safari/Desktop). In der Claude-Vorschau ist Kamerazugriff aus Sicherheitsgründen nicht möglich.
 - **localStorage** funktioniert in der Claude-Artifact-Vorschau nicht (Browser-Beschränkung des Sandboxes). Auf einem echten Gerät funktioniert die Persistenz vollständig.
+- **Service Worker** braucht HTTPS oder `localhost` zum Registrieren (Browser-Sicherheitsanforderung); lokal getestet über `python -m http.server`.
 
-Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcodejs ≈ 20 KB + jsQR ≈ 130 KB).
+Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcodejs ≈ 20 KB + jsQR ≈ 130 KB), zzgl. `manifest.json`, `service-worker.js` und Icons.
 
 ---
 
 ## ToDos
 
 **Kurzfristig (für echte Android-Nutzung)**
-- [ ] Web NFC im Admin-Tool tatsächlich verdrahten (`write()`-Aufruf mit echtem NDEF-Record, nicht nur simuliert)
-- [ ] Web NFC im Haupt-App-Scan tatsächlich auf echtem Gerät testen und NDEF-Record-Format bestätigen
-- [ ] PWA-Manifest + Service Worker → App installierbar machen + Offline-Caching
-- [ ] App-Icon und Splash Screen
+- [x] Web NFC im Admin-Tool tatsächlich verdrahten (`write()`-Aufruf mit echtem NDEF-Record, nicht nur simuliert) — `writeFigureToTag()` nutzt `NDEFReader.write()` mit `text`-Record, Fallback-Simulation falls Web NFC nicht verfügbar
+- [x] NDEF-Record-Format zwischen Admin-Write und App-Scan abgeglichen — beide Seiten nutzen `recordType: 'text'` mit rohem JSON-String, passt zu `parseFigurePayload()`
+- [ ] Web NFC (Schreiben *und* Lesen) auf echtem Android-Gerät verifizieren — kann nicht aus der Entwicklungsumgebung getestet werden, nur Code-Review möglich
+- [x] PWA-Manifest + Service Worker → App installierbar machen + Offline-Caching (`manifest.json`, `service-worker.js`, in `figuren-spiel.html` eingebunden)
+- [x] App-Icon und Splash Screen (`icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-512.png`, `icons/favicon.png`)
 
 **Mittelfristig**
 - [ ] Multiplayer: Ergebnis-Rückkanal Host → Sender (derzeit kein Rückkanal; Optionen: QR-Code auf Host-Bildschirm, den Sender scannt)

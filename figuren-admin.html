@@ -380,12 +380,45 @@ function saveFigure() {
   setTimeout(() => document.getElementById('create-status').textContent = '', 3000);
 }
 
+// ---------------------------------------------------------------
+// ECHTES NFC-SCHREIBEN (Web NFC API)
+// Funktioniert nur: Chrome auf Android, über HTTPS, nach Nutzer-Geste.
+// Schreibt einen einzelnen "text"-Record mit dem Figuren-JSON — exakt
+// das Format, das parseFigurePayload() in figuren-spiel.html erwartet.
+// ---------------------------------------------------------------
+function nfcWriteSupported() {
+  return typeof NDEFReader !== 'undefined';
+}
+
+async function writeFigureToTag(fig, statusEl) {
+  const payload = JSON.stringify(fig);
+  if (!nfcWriteSupported()) {
+    statusEl.textContent = '⚠️ Web NFC wird auf diesem Gerät/Browser nicht unterstützt (nur Chrome/Android). Simuliere Schreibvorgang...';
+    await new Promise(r => setTimeout(r, 1200));
+    statusEl.textContent = `🧪 (Simuliert) "${fig.name}" wäre auf NFC-Tag geschrieben worden.`;
+    return;
+  }
+  try {
+    statusEl.textContent = '📡 Halte einen NFC-Tag an dein Handy...';
+    const writer = new NDEFReader();
+    await writer.write({ records: [{ recordType: 'text', data: payload }] });
+    statusEl.textContent = `✅ "${fig.name}" erfolgreich auf NFC-Tag geschrieben!`;
+  } catch (err) {
+    console.warn('NFC-Schreiben fehlgeschlagen:', err);
+    if (err.name === 'NotAllowedError') {
+      statusEl.textContent = '⚠️ NFC-Berechtigung wurde verweigert.';
+    } else if (err.name === 'NotSupportedError') {
+      statusEl.textContent = '⚠️ NFC ist auf diesem Gerät nicht verfügbar.';
+    } else {
+      statusEl.textContent = '⚠️ NFC-Fehler: ' + err.message;
+    }
+  }
+}
+
 function writeNFC() {
   const fig = buildFigureData();
   if (!fig.name || fig.name === 'Unbenannt') { alert('Name eingeben!'); return; }
-  const status = document.getElementById('create-status');
-  status.textContent = '📡 Schreibe auf NFC-Tag... (Simuliert)';
-  setTimeout(() => { status.textContent = `✅ "${fig.name}" erfolgreich auf NFC-Tag geschrieben!`; }, 1500);
+  writeFigureToTag(fig, document.getElementById('create-status'));
 }
 
 function renderLibrary() {
@@ -414,9 +447,10 @@ function deleteFig(i) {
 }
 
 function writeFromLib(i) {
-  const f = library[i];
-  const status = document.createElement('div');
-  alert(`📡 Schreibe "${f.name}" auf NFC-Tag...\n(In der echten App: Web NFC API verwenden)`);
+  switchTab('nfc', document.querySelectorAll('.tabs .tab')[2]);
+  document.getElementById('nfc-fig-select').value = i;
+  updateNFCPreview();
+  writeNFCFromLib();
 }
 
 function exportAll() {
@@ -445,9 +479,7 @@ function writeNFCFromLib() {
   const i = document.getElementById('nfc-fig-select').value;
   if (i === '') return;
   const f = library[parseInt(i)];
-  const s = document.getElementById('nfc-status');
-  s.textContent = '📡 Schreibe...';
-  setTimeout(() => { s.textContent = `✅ "${f.name}" auf NFC-Tag geschrieben!`; }, 1500);
+  writeFigureToTag(f, document.getElementById('nfc-status'));
 }
 
 function simulateScan() {

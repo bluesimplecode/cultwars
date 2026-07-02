@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>FigurKampf</title>
+<meta name="theme-color" content="#dc2626">
+<meta name="description" content="Sammle Figuren per NFC und kämpfe rundenbasiert — solo oder gegen einen Freund.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FigurKampf">
 <script>
 /* QRCode.js v1.0.0 - MIT License - https://github.com/davidshimjs/qrcodejs */
 var QRCode;
@@ -1971,6 +1979,15 @@ if (nfcNote) {
   nfcNote.textContent = nfcSupported()
     ? '✅ NFC verfügbar auf diesem Gerät'
     : '⚠️ Kein echtes NFC erkannt — Scan läuft im Testmodus (Chrome auf Android nötig)';
+}
+
+// PWA: Service Worker für Offline-Caching registrieren (nur über HTTPS/localhost verfügbar)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch((err) => {
+      console.warn('Service-Worker-Registrierung fehlgeschlagen:', err);
+    });
+  });
 }
 </script>
 </body>
