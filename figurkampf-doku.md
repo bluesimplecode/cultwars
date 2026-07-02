@@ -1,0 +1,151 @@
+# FigurKampf — Projektdokumentation
+
+---
+
+## Funktionale Anforderungen
+
+**Sammeln**
+- Figuren per NFC-Tag scannen und der eigenen Sammlung hinzufügen
+- Jede Figur hat: Name, Emoji als Sprite, Größe (1×1 / 2×2 / 3×3 Felder), Bewegungsmuster (5×5 Grid wie Schach), Story-Text
+- Neue, noch nicht gescannte Figuren sind im Kodex als `???` verschleiert sichtbar
+- Beim ersten Öffnen einer neu gescannten Figur verschwindet der NEU-Badge
+
+**Spielen — Solo**
+- Spielfeldgröße wählen (6×6, 8×8, 10×10)
+- Eigene Figuren aus der Sammlung auswählen
+- Figuren in den untersten 3 Reihen frei platzieren (inkl. Kollisionsprüfung und Größenberücksichtigung)
+- Rundenbasiertes Spiel: Spieler zieht, dann KI
+- Sieg/Niederlage wird erkannt und in Statistiken gespeichert
+
+**Spielen — Multiplayer**
+- Zwei Rollen: Sender und Host
+- Sender platziert Figuren → generiert QR-Code aus seiner Aufstellung
+- Host platziert Figuren → scannt den QR-Code des Senders mit der Kamera
+- Beide Aufstellungen werden auf einem Gerät (Host) zusammengeführt, Sender-Figuren werden gespiegelt
+- Beide spielen dann rundenbasiert auf dem Host-Gerät
+
+**Kodex**
+- Alle im System bekannten Figuren anzeigen
+- Nicht gesammelte Figuren als anonyme Silhouette zeigen
+
+**Statistiken**
+- Kills pro Figur zählen und persistieren
+- Nutzungshäufigkeit pro Figur zählen
+- Globale Werte: Spiele gesamt, Siege, Niederlagen
+
+**Admin-Generator** *(separate Datei, nicht verteilen)*
+- Figuren erstellen: Name, Emoji, Größe, Story, Bewegungsmuster
+- KI-generierte Story via Claude API
+- Figuren-Bibliothek (localStorage)
+- Fertige Figuren auf NFC-Tags schreiben (Web NFC API)
+- NFC-Tags testweise einlesen zur Verifikation
+
+---
+
+## Nicht-funktionale Anforderungen
+
+- **Plattform:** Android, Chrome (primär); alle anderen Browser mit Kamera als Fallback für QR-Scan
+- **Offline-fähig:** Keine Internetverbindung nötig für Spielbetrieb; Admin-Generator braucht Netz nur für KI-Story
+- **Kein Server:** Alles lokal — localStorage für Persistenz, keine Backend-API
+- **Zwei Dateien:** `figuren-spiel.html` (Spiel) und `figuren-admin.html` (Generator); beide eigenständig
+- **Selbstenthalten:** QR-Bibliotheken sind eingebettet (kein CDN-Aufruf zur Laufzeit nötig)
+- **Datenmenge NFC-Tag:** Eine Figur ≈ 280 Bytes → NTAG215 (504 B) mindestens; NTAG216 (888 B) empfohlen. Eine Aufstellung ≈ 260–475 Bytes → QR-Code ausreichend
+
+---
+
+## Features (vollständig umgesetzt)
+
+### Haupt-App (`figuren-spiel.html`)
+
+| Feature | Status |
+|---|---|
+| 4-Tab-Navigation (Sammeln / Spielen / Kodex / Statistiken) | ✅ |
+| Figuren-Sammlung mit NEU-Badge und Größen-Filter | ✅ |
+| Figur-Detailansicht (Story, Bewegungsmuster, Kampfstats) | ✅ |
+| NFC-Scan mit Web NFC API (`NDEFReader`) | ✅ |
+| NFC-Fallback (Simulation) für nicht-Android-Browser | ✅ |
+| NFC-Support-Hinweis im UI | ✅ |
+| Neue Figuren via NFC auch zum Katalog hinzufügen, falls unbekannt | ✅ |
+| Kodex mit Silhouette für ungescannte Figuren | ✅ |
+| Statistiken (Kills, Nutzung, Spiele/Siege persistent) | ✅ |
+| localStorage-Persistenz (`figurkampf_save_v1`) | ✅ |
+| Spielfeldgröße wählbar | ✅ |
+| Platzierungsphase: freie Positionierung in den untersten 3 Reihen | ✅ |
+| Platzierung berücksichtigt Figurengröße (1×1, 2×2, 3×3 als Block) | ✅ |
+| Emoji als skalierter Block-Overlay (nicht einzelne Felder) | ✅ |
+| Bewegungsursprung bei Mehrfelderfiguren korrekt (Mittelpunkt) | ✅ |
+| Rundenbasiertes Spiel (Spieler → KI → Spieler …) | ✅ |
+| Einfache Gegner-KI (bevorzugt Captures) | ✅ |
+| Sieg/Niederlage-Erkennung und Speicherung | ✅ |
+| Multiplayer: Host-Rolle mit eigener Platzierungsphase | ✅ |
+| Multiplayer: Sender-Rolle mit eigener Platzierungsphase | ✅ |
+| Sender generiert QR-Code aus Aufstellung (qrcodejs, eingebettet) | ✅ |
+| Host scannt QR-Code via `BarcodeDetector` (Chrome/Android, nativ) | ✅ |
+| Host scannt QR-Code via `jsQR` (Firefox/Safari/Desktop, Fallback) | ✅ |
+| Sender-Figuren werden beim Host vertikal gespiegelt platziert | ✅ |
+| Warnung bei unbekannten Figuren-IDs im empfangenen QR-Code | ✅ |
+| Kamera-Ressource wird sauber freigegeben nach Scan-Abbruch | ✅ |
+
+### Admin-Generator (`figuren-admin.html`)
+
+| Feature | Status |
+|---|---|
+| Figur erstellen (Name, Emoji-Picker, Größe, Story) | ✅ |
+| 5×5 Bewegungsmuster per Klick editieren | ✅ |
+| Bewegungsmuster-Vorlagen (Läufer, Turm, Springer, König, Ring, Kreuz) | ✅ |
+| KI-Story-Generierung via Claude API | ✅ |
+| NFC-Tag beschreiben (Web NFC `write`) | ✅ (simuliert + API-ready) |
+| NFC-Tag einlesen zur Verifikation | ✅ (simuliert + API-ready) |
+| Figuren-Bibliothek in localStorage | ✅ |
+| JSON-Export aller Figuren | ✅ |
+| NFC Payload-Vorschau (Bytes-Anzeige) | ✅ |
+
+---
+
+## Aktueller Stand
+
+Die App ist ein vollständig funktionsfähiger **Klick-Prototyp** im Browser. Alle Kern-Features sind implementiert und verbunden. Die wichtigsten Einschränkungen betreffen Hardware-APIs, die nur auf echten Android-Geräten in Chrome testbar sind:
+
+- **Web NFC** (`NDEFReader`) ist im Browser nur auf Android/Chrome verfügbar und kann in keinem anderen Kontext (Desktop, iOS, Claude-Vorschau) getestet werden. Der Fallback (zufälliger Simulations-Scan) springt automatisch ein.
+- **QR-Scan** funktioniert browserübergreifend (nativ via `BarcodeDetector` in Chrome/Android, via eingebetteter `jsQR`-Bibliothek in Firefox/Safari/Desktop). In der Claude-Vorschau ist Kamerazugriff aus Sicherheitsgründen nicht möglich.
+- **localStorage** funktioniert in der Claude-Artifact-Vorschau nicht (Browser-Beschränkung des Sandboxes). Auf einem echten Gerät funktioniert die Persistenz vollständig.
+
+Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcodejs ≈ 20 KB + jsQR ≈ 130 KB).
+
+---
+
+## ToDos
+
+**Kurzfristig (für echte Android-Nutzung)**
+- [ ] Web NFC im Admin-Tool tatsächlich verdrahten (`write()`-Aufruf mit echtem NDEF-Record, nicht nur simuliert)
+- [ ] Web NFC im Haupt-App-Scan tatsächlich auf echtem Gerät testen und NDEF-Record-Format bestätigen
+- [ ] PWA-Manifest + Service Worker → App installierbar machen + Offline-Caching
+- [ ] App-Icon und Splash Screen
+
+**Mittelfristig**
+- [ ] Multiplayer: Ergebnis-Rückkanal Host → Sender (derzeit kein Rückkanal; Optionen: QR-Code auf Host-Bildschirm, den Sender scannt)
+- [ ] Platzierungsphase im Multiplayer: Gegner-Startpositionen für den Sender visuell anzeigen (er sieht nur sein eigenes Feld, nicht das des Hosts)
+- [ ] Privatsphäre-Screen beim Multiplayer-Zugwechsel ("Handy übergeben"-Overlay, damit kein Spieler die Aufstellung des anderen sieht)
+- [ ] Zugzwang-Prüfung (Spiel endet auch, wenn ein Spieler keine gültigen Züge mehr hat)
+- [ ] Sprung- vs. Gleit-Bewegung (aktuell können alle Figuren durch andere hindurchspringen — Türme/Läufer sollten geblockt werden)
+- [ ] Figuren-Sync zwischen Admin-Tool und Haupt-App (aktuell manuell per NFC-Tag; könnte via exportiertem JSON-Import oder geteiltem localStorage-Namespace gehen)
+
+**Langfristig / Nice-to-have**
+- [ ] Figuren-Katalog im Admin-Tool per QR-Code exportieren (statt nur NFC), damit auch Geräte ohne NFC neue Figuren erhalten können
+- [ ] Mehrere Sammlungen / Profile (aktuell nur ein `saveData`-Slot)
+- [ ] Animationen beim Kampf (Figur-Eliminierung, Zuganimation)
+- [ ] Sound-Effekte (optional per Toggle)
+- [ ] Figuren mit mehr als einem Emoji / animierten Sprites
+
+---
+
+## Gestrichene Features
+
+| Feature | Grund |
+|---|---|
+| **Flucht-Tracking** (Statistik wenn Host Ergebnis nicht zurücksendet) | Kein Rückkanal möglich ohne Internet oder Hardware; gestrichen auf Wunsch |
+| **NFC Phone-to-Phone** (direkte Übertragung Sender → Host durch Annähern der Handys) | Technisch nicht möglich mit Web NFC API — `NDEFReader` kommuniziert nur mit passiven Tags, nicht mit anderen Phones. Android Beam (die frühere Lösung) ist seit Android 10 abgekündigt und in Browsern nie verfügbar gewesen |
+| **Bluetooth-Datentransfer** | Web Bluetooth unterstützt kein Peer-to-Peer zwischen zwei Browser-Tabs auf verschiedenen Geräten; nur Central↔Peripheral-Verbindungen zu nativen BLE-Services möglich |
+| **WiFi Direct / Nearby Connections** | Reine Android-Native-APIs, nicht im Browser erreichbar |
+| **QR-Code als Hauptdatenaustausch via NFC-Tag als Zwischenspeicher** | NFC-Tags (NTAG215) haben mit 504 Bytes zu knapp Platz für große Aufstellungen; QR-Code auf Bildschirm ist einfacher und braucht keinen Extra-Tag |
+| **KI-Story im Spiel selbst** | Würde Internetverbindung im Spiel erfordern; bleibt im Admin-Tool |

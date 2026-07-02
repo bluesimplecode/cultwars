@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚙️ FigurKampf — Admin Generator</title>
+<style>
+  :root {
+    --bg: #080810;
+    --surface: #0e0e1c;
+    --surface2: #16162a;
+    --accent: #dc2626;
+    --accent2: #ef4444;
+    --gold: #f59e0b;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --text3: #475569;
+    --border: rgba(220,38,38,0.2);
+    --green: #10b981;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
+
+  .admin-bar { background: var(--accent); padding: 8px 20px; font-size: 11px; font-weight: 700; letter-spacing: 2px; display: flex; justify-content: space-between; align-items: center; }
+  .admin-bar span { opacity: 0.7; font-weight: 400; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: var(--text3); margin-bottom: 28px; font-family: monospace; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:600px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; }
+  .panel-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+  label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; margin-top: 12px; letter-spacing: 0.5px; }
+  label:first-of-type { margin-top: 0; }
+
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 9px 12px; font-size: 13px; font-family: 'Courier New', monospace;
+    outline: none; transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent2); }
+  textarea { min-height: 80px; resize: vertical; }
+  select option { background: #1a1a2e; }
+
+  .emoji-pick { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 6px; }
+  .ep { width: 36px; height: 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; transition: border-color 0.1s; }
+  .ep.sel { border-color: var(--accent2); background: rgba(220,38,38,0.15); }
+
+  .move-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; margin-top: 8px; }
+  .mc { width: 100%; aspect-ratio: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: background 0.1s; user-select: none; }
+  .mc.can { background: rgba(220,38,38,0.3); border-color: var(--accent2); }
+  .mc.self { background: var(--accent); border-color: var(--accent2); cursor: default; }
+
+  .preview { text-align: center; padding: 20px 10px; }
+  .preview-emoji { font-size: 72px; margin-bottom: 12px; }
+  .preview-name { font-size: 18px; font-weight: 700; }
+  .preview-badge { display: inline-block; background: rgba(220,38,38,0.15); color: var(--accent2); border: 1px solid var(--border); font-size: 10px; padding: 3px 10px; border-radius: 20px; margin-top: 8px; letter-spacing: 1px; }
+  .preview-story { font-size: 12px; color: var(--text2); margin-top: 12px; line-height: 1.6; text-align: left; }
+
+  .nfc-block { background: var(--surface2); border: 1px dashed var(--border); border-radius: var(--r); padding: 16px; margin-top: 16px; }
+  .nfc-title { font-size: 10px; letter-spacing: 2px; color: var(--accent2); text-transform: uppercase; margin-bottom: 8px; }
+  .nfc-payload { font-family: monospace; font-size: 11px; color: var(--text3); word-break: break-all; line-height: 1.6; }
+
+  .btn { display: block; width: 100%; padding: 13px; background: var(--accent); border: none; border-radius: var(--r); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Courier New', monospace; letter-spacing: 1px; margin-top: 16px; transition: background 0.1s; }
+  .btn:hover { background: var(--accent2); }
+  .btn.secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); }
+  .btn.success { background: var(--green); }
+
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tag { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--text2); cursor: pointer; }
+  .tag.sel { background: rgba(220,38,38,0.2); border-color: var(--accent2); color: var(--accent2); }
+
+  .fig-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .fig-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .fig-item-emoji { font-size: 24px; }
+  .fig-item-info { flex: 1; }
+  .fig-item-name { font-size: 13px; font-weight: 700; }
+  .fig-item-meta { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .fig-item-actions { display: flex; gap: 6px; }
+  .icon-btn { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .icon-btn.del { border-color: rgba(239,68,68,0.3); color: var(--accent2); }
+  .icon-btn.nfc { border-color: rgba(16,185,129,0.3); color: var(--green); }
+
+  .status { font-size: 11px; color: var(--text3); margin-top: 8px; font-style: italic; }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab { padding: 10px 16px; font-size: 12px; cursor: pointer; color: var(--text3); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+  .separator { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  .ai-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 20px; padding: 4px 10px; font-size: 10px; color: var(--gold); margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="admin-bar">
+  ⚠️ FIGUR GENERATOR — INTERN &nbsp;|&nbsp; NICHT TEILEN
+  <span>v1.0.0 · FigurKampf Admin</span>
+</div>
+
+<div class="container">
+  <h1>⚙️ Figuren-Generator</h1>
+  <p class="sub">// Erstelle und schreibe neue Figuren auf NFC-Tags</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('create', this)">Neue Figur</div>
+    <div class="tab" onclick="switchTab('library', this)">Figuren-Bibliothek</div>
+    <div class="tab" onclick="switchTab('nfc', this)">NFC-Writer</div>
+  </div>
+
+  <!-- CREATE TAB -->
+  <div id="tab-create">
+    <div class="grid">
+      <!-- Left: Editor -->
+      <div>
+        <div class="panel">
+          <div class="panel-title">Basisdaten</div>
+
+          <label>Name der Figur</label>
+          <input type="text" id="f-name" placeholder="z.B. Schattenwächter" oninput="updatePreview()">
+
+          <label>Emoji / Sprite</label>
+          <div class="emoji-pick" id="emoji-pick"></div>
+          <input type="text" id="f-emoji" placeholder="oder eigenes Emoji eingeben" maxlength="2" oninput="selectCustomEmoji()" style="margin-top:6px;">
+
+          <label>Größe (Felder)</label>
+          <div class="tag-list">
+            <div class="tag sel" onclick="selectSize(this,'1')">1×1 (1 Feld)</div>
+            <div class="tag" onclick="selectSize(this,'4')">2×2 (4 Felder)</div>
+            <div class="tag" onclick="selectSize(this,'9')">3×3 (9 Felder)</div>
+          </div>
+          <input type="hidden" id="f-size" value="1">
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <div class="panel-title">Geschichte / Story</div>
+          <div class="ai-chip">✨ KI-Assistent aktiv</div>
+
+          <label>Story-Text</label>
+          <textarea id="f-story" placeholder="Die Geschichte dieser Figur..." oninput="updatePreview()"></textarea>
+
+          <button class="btn secondary" onclick="generateAIStory()">✨ Story generieren</button>
+        </div>
+      </div>
+
+      <!-- Right: Movement + Preview -->
+      <div>
+        <div class="panel">
+          <div class="panel-title">Bewegungsmuster</div>
+          <p style="font-size:11px; color:var(--text3); margin-bottom:10px;">Klicke auf Felder um Bewegungen zu setzen. Mitte = Figur selbst.</p>
+          <div class="move-grid" id="move-grid"></div>
+          <div style="display:flex; gap:12px; margin-top:10px; font-size:10px; color:var(--text3);">
+            <span>🟥 = Figur</span>
+            <span style="color:rgba(220,38,38,0.8);">🟫 = Kann sich bewegen</span>
+            <span>⬛ = Gesperrt</span>
+          </div>
+          <hr class="separator">
+          <div class="panel-title">Vorlagen</div>
+          <div class="tag-list">
+            <div class="tag" onclick="applyTemplate('bishop')">Läufer</div>
+            <div class="tag" onclick="applyTemplate('rook')">Turm</div>
+            <div class="tag" onclick="applyTemplate('knight')">Springer</div>
+            <div class="tag" onclick="applyTemplate('king')">König</div>
+            <div class="tag" onclick="applyTemplate('ring')">Ring</div>
+            <div class="tag" onclick="applyTemplate('cross')">Kreuz</div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <div class="panel-title">Vorschau</div>
+          <div class="preview">
+            <div class="preview-emoji" id="p-emoji">❓</div>
+            <div class="preview-name" id="p-name">Neue Figur</div>
+            <div class="preview-badge" id="p-size">1×1</div>
+            <div class="preview-story" id="p-story">Keine Story.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NFC Payload + Actions -->
+    <div class="nfc-block" style="margin-top:16px;">
+      <div class="nfc-title">📡 NFC Payload Vorschau</div>
+      <div class="nfc-payload" id="nfc-payload">{ Figur noch nicht konfiguriert }</div>
+    </div>
+
+    <div class="grid" style="margin-top:12px;">
+      <button class="btn secondary" onclick="saveFigure()">💾 Zur Bibliothek speichern</button>
+      <button class="btn" onclick="writeNFC()">📡 Auf NFC-Tag schreiben</button>
+    </div>
+    <div class="status" id="create-status"></div>
+  </div>
+
+  <!-- LIBRARY TAB -->
+  <div id="tab-library" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <span style="font-size:13px; font-weight:700;" id="lib-count">0 Figuren</span>
+      <button class="btn secondary" style="width:auto; padding:8px 16px; margin:0;" onclick="exportAll()">📤 JSON exportieren</button>
+    </div>
+    <div class="fig-list" id="fig-library"></div>
+  </div>
+
+  <!-- NFC WRITER TAB -->
+  <div id="tab-nfc" style="display:none;">
+    <div class="panel">
+      <div class="panel-title">NFC Tag Writer</div>
+      <p style="font-size:12px; color:var(--text2); margin-bottom:16px; line-height:1.6;">
+        Wähle eine Figur aus der Bibliothek und schreibe sie auf einen NFC-Tag.
+        Die Spiel-App liest den Tag automatisch aus.
+      </p>
+
+      <label>Figur auswählen</label>
+      <select id="nfc-fig-select" onchange="updateNFCPreview()">
+        <option value="">— Figur wählen —</option>
+      </select>
+
+      <div class="nfc-block" style="margin-top:14px;">
+        <div class="nfc-title">Payload</div>
+        <div class="nfc-payload" id="nfc-writer-payload">Wähle eine Figur aus.</div>
+      </div>
+
+      <div style="margin-top:16px; background:var(--surface2); border-radius:var(--r); padding:14px;">
+        <div style="font-size:10px; color:var(--text3); letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">NFC Tag Info</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12px;">
+          <div>Typ: <span style="color:var(--text);">NDEF / URI</span></div>
+          <div>Größe: <span style="color:var(--text);" id="nfc-size-info">—</span></div>
+          <div>Format: <span style="color:var(--text);">JSON-UTF8</span></div>
+          <div>Kapazität: <span style="color:var(--text);">~1KB min.</span></div>
+        </div>
+      </div>
+
+      <button class="btn" id="nfc-write-btn" onclick="writeNFCFromLib()" style="margin-top:16px;" disabled>
+        📡 Jetzt auf NFC-Tag schreiben
+      </button>
+      <div class="status" id="nfc-status"></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <div class="panel-title">NFC Lesegerät / Test</div>
+      <p style="font-size:12px; color:var(--text2); margin-bottom:12px;">Scanne einen bereits beschriebenen Tag zum Testen.</p>
+      <button class="btn secondary" onclick="simulateScan()">🔍 Tag scannen (simulieren)</button>
+      <div id="scan-result" style="display:none; margin-top:12px; background:var(--surface2); border-radius:8px; padding:12px; font-size:12px; color:var(--text2);"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const EMOJIS = ['🗡️','🐉','🧙‍♀️','🤖','🦅','👻','🏔️','🧝','🔥','❄️','⚡','🌊','🦁','🐺','🦊','💀','🏹','⚔️','🛡️','🌙'];
+
+let movePattern = Array.from({length:5}, (_,r) => Array.from({length:5}, (_,c) => (r===2&&c===2)?2:0));
+let selectedEmoji = '❓';
+let library = JSON.parse(localStorage.getItem('figuren_lib') || '[]');
+
+function switchTab(name, el) {
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).style.display = 'block';
+  el.classList.add('active');
+  if (name==='library') renderLibrary();
+  if (name==='nfc') renderNFCSelect();
+}
+
+function initEmojiPick() {
+  const c = document.getElementById('emoji-pick');
+  EMOJIS.forEach(e => {
+    const d = document.createElement('div');
+    d.className = 'ep';
+    d.textContent = e;
+    d.onclick = () => { selectedEmoji = e; document.getElementById('f-emoji').value = e; updatePreview(); document.querySelectorAll('.ep').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); };
+    c.appendChild(d);
+  });
+}
+
+function selectCustomEmoji() {
+  const v = document.getElementById('f-emoji').value.trim();
+  if (v) { selectedEmoji = v; updatePreview(); }
+}
+
+function initMoveGrid() {
+  const g = document.getElementById('move-grid');
+  g.innerHTML = '';
+  for (let r=0;r<5;r++) for (let c=0;c<5;c++) {
+    const d = document.createElement('div');
+    const v = movePattern[r][c];
+    d.className = 'mc' + (v===1?' can':v===2?' self':'');
+    d.textContent = v===2 ? selectedEmoji : '';
+    if (v!==2) d.onclick = () => { movePattern[r][c] = movePattern[r][c]===0?1:0; initMoveGrid(); updatePayload(); };
+    g.appendChild(d);
+  }
+}
+
+function applyTemplate(t) {
+  movePattern = Array.from({length:5}, (_,r) => Array.from({length:5}, (_,c) => (r===2&&c===2)?2:0));
+  const tm = {
+    bishop: [[1,0,0,0,1],[0,1,0,1,0],[0,0,2,0,0],[0,1,0,1,0],[1,0,0,0,1]],
+    rook:   [[0,0,1,0,0],[0,0,1,0,0],[1,1,2,1,1],[0,0,1,0,0],[0,0,1,0,0]],
+    knight: [[0,1,0,1,0],[1,0,0,0,1],[0,0,2,0,0],[1,0,0,0,1],[0,1,0,1,0]],
+    king:   [[0,0,0,0,0],[0,1,1,1,0],[0,1,2,1,0],[0,1,1,1,0],[0,0,0,0,0]],
+    ring:   [[1,1,1,1,1],[1,0,0,0,1],[1,0,2,0,1],[1,0,0,0,1],[1,1,1,1,1]],
+    cross:  [[0,0,1,0,0],[0,0,1,0,0],[1,1,2,1,1],[0,0,1,0,0],[0,0,1,0,0]],
+  };
+  if (tm[t]) movePattern = tm[t].map(row => [...row]);
+  initMoveGrid(); updatePayload();
+}
+
+function selectSize(el, s) {
+  document.querySelectorAll('.tag-list .tag').forEach(t=>t.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('f-size').value = s;
+  const labels = {'1':'1×1','4':'2×2','9':'3×3'};
+  document.getElementById('p-size').textContent = labels[s] || '1×1';
+  updatePayload();
+}
+
+function updatePreview() {
+  const name = document.getElementById('f-name').value || 'Neue Figur';
+  const story = document.getElementById('f-story').value || 'Keine Story.';
+  document.getElementById('p-emoji').textContent = selectedEmoji;
+  document.getElementById('p-name').textContent = name;
+  document.getElementById('p-story').textContent = story;
+  updatePayload();
+}
+
+function buildFigureData() {
+  return {
+    id: Date.now(),
+    name: document.getElementById('f-name').value || 'Unbenannt',
+    emoji: selectedEmoji,
+    size: parseInt(document.getElementById('f-size').value) || 1,
+    story: document.getElementById('f-story').value || '',
+    move: movePattern,
+    kills: 0,
+    uses: 0,
+    new: true,
+    created: new Date().toISOString()
+  };
+}
+
+function updatePayload() {
+  const fig = buildFigureData();
+  const json = JSON.stringify(fig, null, 2);
+  document.getElementById('nfc-payload').textContent = json;
+}
+
+async function generateAIStory() {
+  const name = document.getElementById('f-name').value;
+  if (!name) { alert('Bitte zuerst einen Namen eingeben.'); return; }
+  const btn = document.querySelector('#tab-create .btn.secondary');
+  btn.textContent = '⏳ Generiere...'; btn.disabled = true;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 1000,
+        messages: [{ role: 'user', content: `Schreibe eine kurze, mystische Hintergrundgeschichte (2-3 Sätze) für eine Spielfigur namens "${name}" in einem schachähnlichen Fantasy-Sammelkartenspiel. Nur den Text, keine Anführungszeichen, keine Überschriften.` }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '';
+    document.getElementById('f-story').value = text;
+    updatePreview();
+  } catch(e) { document.getElementById('f-story').value = 'Fehler beim Generieren. API-Schlüssel prüfen.'; }
+  btn.textContent = '✨ Story generieren'; btn.disabled = false;
+}
+
+function saveFigure() {
+  const fig = buildFigureData();
+  library.push(fig);
+  localStorage.setItem('figuren_lib', JSON.stringify(library));
+  document.getElementById('create-status').textContent = `✅ "${fig.name}" gespeichert. (${library.length} in Bibliothek)`;
+  setTimeout(() => document.getElementById('create-status').textContent = '', 3000);
+}
+
+function writeNFC() {
+  const fig = buildFigureData();
+  if (!fig.name || fig.name === 'Unbenannt') { alert('Name eingeben!'); return; }
+  const status = document.getElementById('create-status');
+  status.textContent = '📡 Schreibe auf NFC-Tag... (Simuliert)';
+  setTimeout(() => { status.textContent = `✅ "${fig.name}" erfolgreich auf NFC-Tag geschrieben!`; }, 1500);
+}
+
+function renderLibrary() {
+  const list = document.getElementById('fig-library');
+  document.getElementById('lib-count').textContent = library.length + ' Figuren';
+  if (library.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:30px;font-size:13px;">Noch keine Figuren gespeichert.</div>'; return; }
+  list.innerHTML = library.map((f,i) => `
+    <div class="fig-item">
+      <div class="fig-item-emoji">${f.emoji}</div>
+      <div class="fig-item-info">
+        <div class="fig-item-name">${f.name}</div>
+        <div class="fig-item-meta">${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${new Date(f.created).toLocaleDateString('de-DE')}</div>
+      </div>
+      <div class="fig-item-actions">
+        <button class="icon-btn nfc" onclick="writeFromLib(${i})" title="NFC schreiben">📡</button>
+        <button class="icon-btn del" onclick="deleteFig(${i})" title="Löschen">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function deleteFig(i) {
+  if (!confirm(`"${library[i].name}" löschen?`)) return;
+  library.splice(i, 1);
+  localStorage.setItem('figuren_lib', JSON.stringify(library));
+  renderLibrary();
+}
+
+function writeFromLib(i) {
+  const f = library[i];
+  const status = document.createElement('div');
+  alert(`📡 Schreibe "${f.name}" auf NFC-Tag...\n(In der echten App: Web NFC API verwenden)`);
+}
+
+function exportAll() {
+  const blob = new Blob([JSON.stringify(library, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'figuren-export.json'; a.click();
+}
+
+function renderNFCSelect() {
+  const sel = document.getElementById('nfc-fig-select');
+  sel.innerHTML = '<option value="">— Figur wählen —</option>' + library.map((f,i) => `<option value="${i}">${f.emoji} ${f.name}</option>`).join('');
+  document.getElementById('nfc-write-btn').disabled = true;
+}
+
+function updateNFCPreview() {
+  const i = document.getElementById('nfc-fig-select').value;
+  if (i === '') { document.getElementById('nfc-writer-payload').textContent = 'Wähle eine Figur aus.'; document.getElementById('nfc-write-btn').disabled = true; return; }
+  const f = library[parseInt(i)];
+  document.getElementById('nfc-writer-payload').textContent = JSON.stringify(f, null, 2);
+  const bytes = new TextEncoder().encode(JSON.stringify(f)).length;
+  document.getElementById('nfc-size-info').textContent = bytes + ' Bytes';
+  document.getElementById('nfc-write-btn').disabled = false;
+}
+
+function writeNFCFromLib() {
+  const i = document.getElementById('nfc-fig-select').value;
+  if (i === '') return;
+  const f = library[parseInt(i)];
+  const s = document.getElementById('nfc-status');
+  s.textContent = '📡 Schreibe...';
+  setTimeout(() => { s.textContent = `✅ "${f.name}" auf NFC-Tag geschrieben!`; }, 1500);
+}
+
+function simulateScan() {
+  if (library.length === 0) { alert('Keine Figuren in der Bibliothek zum Testen.'); return; }
+  const f = library[Math.floor(Math.random() * library.length)];
+  const r = document.getElementById('scan-result');
+  r.style.display = 'block';
+  r.innerHTML = `<strong>✅ Tag erkannt!</strong><br>Figur: ${f.emoji} <strong>${f.name}</strong><br>Größe: ${f.size===1?'1×1':f.size===4?'2×2':'3×3'}<br>Payload: ${JSON.stringify(f).length} Bytes`;
+}
+
+// Init
+initEmojiPick();
+initMoveGrid();
+updatePreview();
+updatePayload();
+</script>
+</body>
+</html>
