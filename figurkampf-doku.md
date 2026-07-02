@@ -47,7 +47,7 @@
 - **Plattform:** Android, Chrome (primär); alle anderen Browser mit Kamera als Fallback für QR-Scan
 - **Offline-fähig:** Keine Internetverbindung nötig — weder für Spielbetrieb noch für den Admin-Generator
 - **Kein Server:** Alles lokal — localStorage für Persistenz, keine Backend-API
-- **Zwei Dateien:** `figuren-spiel.html` (Spiel) und `figuren-admin.html` (Generator); beide eigenständig
+- **Zwei Dateien:** `cultwars.html` (Spiel) und `figuren-admin.html` (Generator); beide eigenständig
 - **Selbstenthalten:** QR-Bibliotheken sind eingebettet (kein CDN-Aufruf zur Laufzeit nötig)
 - **Datenmenge NFC-Tag:** Eine Figur ≈ 280 Bytes → NTAG215 (504 B) mindestens; NTAG216 (888 B) empfohlen. Eine Aufstellung ≈ 260–475 Bytes → QR-Code ausreichend
 
@@ -55,7 +55,7 @@
 
 ## Features (vollständig umgesetzt)
 
-### Haupt-App (`figuren-spiel.html`)
+### Haupt-App (`cultwars.html`)
 
 | Feature | Status |
 |---|---|
@@ -95,6 +95,7 @@
 | Solo-Gegner-KI bekommt garantiert ebenfalls einen König | ✅ |
 | Höchstes Cultwesen (König, Katalog-ID 9) fest im Katalog, für jeden Spieler von Anfang an freigeschaltet | ✅ |
 | Emoji des höchsten Cultwesens spielerseitig wählbar (Figur-Detailansicht, Override in `saveData` gespeichert) | ✅ |
+| App umbenannt: `figuren-spiel.html` → `cultwars.html`, Seitentitel "Cultwars", Kodex-Überschrift "Cultwesenkodex" | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
@@ -132,7 +133,7 @@ Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcode
 - [x] Web NFC im Admin-Tool tatsächlich verdrahten (`write()`-Aufruf mit echtem NDEF-Record, nicht nur simuliert) — `writeFigureToTag()` nutzt `NDEFReader.write()` mit `text`-Record, zeigt bei fehlendem Web-NFC-Support nur eine Hinweismeldung (keine Simulation)
 - [x] NDEF-Record-Format zwischen Admin-Write und App-Scan abgeglichen — beide Seiten nutzen `recordType: 'text'` mit rohem JSON-String, passt zu `parseFigurePayload()`
 - [ ] Web NFC (Schreiben *und* Lesen) auf echtem Android-Gerät verifizieren — kann nicht aus der Entwicklungsumgebung getestet werden, nur Code-Review möglich
-- [x] PWA-Manifest + Service Worker → App installierbar machen + Offline-Caching (`manifest.json`, `service-worker.js`, in `figuren-spiel.html` eingebunden)
+- [x] PWA-Manifest + Service Worker → App installierbar machen + Offline-Caching (`manifest.json`, `service-worker.js`, in `cultwars.html` eingebunden)
 - [x] App-Icon und Splash Screen (`icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-512.png`, `icons/favicon.png`)
 
 **Mittelfristig**

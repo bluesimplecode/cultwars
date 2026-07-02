@@ -1,8 +1,8 @@
 {
-  "name": "FigurKampf",
-  "short_name": "FigurKampf",
+  "name": "Cultwars",
+  "short_name": "Cultwars",
   "description": "Sammle Figuren per NFC und kämpfe rundenbasiert — solo oder gegen einen Freund.",
-  "start_url": "./figuren-spiel.html",
+  "start_url": "./cultwars.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

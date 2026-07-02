@@ -1,9 +1,9 @@
-// FigurKampf Service Worker — Offline-Caching für die Haupt-App.
-// Cache-Version erhöhen, wenn sich figuren-spiel.html/manifest/icons ändern,
+// Cultwars Service Worker — Offline-Caching für die Haupt-App.
+// Cache-Version erhöhen, wenn sich cultwars.html/manifest/icons ändern,
 // damit Nutzer beim nächsten Start die neue Version bekommen.
-const CACHE_NAME = 'figurkampf-v1';
+const CACHE_NAME = 'cultwars-v2';
 const PRECACHE_URLS = [
-  './figuren-spiel.html',
+  './cultwars.html',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -28,7 +28,7 @@ self.addEventListener('activate', (event) => {
 
 // Cache-first für alles was wir vorgecacht haben, sonst normal ans Netz
 // (die App braucht ohnehin kein Netz zum Spielen — nur der Admin-Generator
-// für die KI-Story, der bewusst nicht Teil dieses Service Workers ist).
+// ist bewusst nicht Teil dieses Service Workers).
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
