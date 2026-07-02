@@ -490,6 +490,12 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .fig-power { font-size: 10px; color: var(--text3); }
   .fig-size { position: absolute; bottom: 6px; left: 6px; font-size: 9px; color: var(--accent2); background: rgba(124,58,237,0.15); padding: 2px 5px; border-radius: 4px; }
 
+  /* König-Hervorhebung: goldener Rahmen + Krone, gut sichtbar gegenüber normalen Figuren */
+  .king-glow { border-color: var(--gold) !important; box-shadow: 0 0 0 1px var(--gold), 0 0 10px rgba(245,158,11,0.5) !important; }
+  .king-glow::before { content: '👑'; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 14px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.7)); z-index: 2; }
+  @keyframes kingPulse { 0%,100% { box-shadow: 0 0 6px 1px rgba(245,158,11,0.55); } 50% { box-shadow: 0 0 16px 5px rgba(245,158,11,0.95); } }
+  .piece-overlay.king-glow { outline: 3px solid var(--gold) !important; animation: kingPulse 1.5s ease-in-out infinite; }
+
   /* Stats bars */
   .stat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .stat-emoji { font-size: 22px; width: 32px; text-align: center; }
@@ -563,7 +569,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .board-cell.place-zone:active { background: rgba(16,185,129,0.3) !important; }
   .board-cell.place-target { background: rgba(16,185,129,0.35) !important; }
   .board-cell.placed { }
-  .hand-fig { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; transition:border-color 0.1s; min-width:56px; }
+  .hand-fig { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; transition:border-color 0.1s; min-width:56px; position:relative; }
   .hand-fig.selected { border-color:var(--accent2); background:rgba(124,58,237,0.15); }
   .hand-fig.used { opacity:0.35; pointer-events:none; }
   .hand-fig .hf-emoji { font-size:26px; }
@@ -843,30 +849,33 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 // FIGURES = der Kodex / Katalog aller existierenden Figuren-Vorlagen.
 // Diese Daten ändern sich nie zur Laufzeit (außer durch den Admin-Generator / NFC-Scan neuer Templates).
 const FIGURES_CATALOG = [
-  { id:1, name:'Schattenwächter', emoji:'🗡️', size:1,
+  { id:1, name:'Schattenwächter', emoji:'🗡️', size:1, moveMode:'jump',
     story:'Einst ein Ritter des Lichts, korrumpiert durch einen alten Fluch. Seine Klinge trinkt Seelen.',
     move:[[0,0,0,0,0],[0,1,0,1,0],[0,0,2,0,0],[0,1,0,1,0],[0,0,0,0,0]] },
-  { id:2, name:'Frostdrache', emoji:'🐉', size:9,
+  { id:2, name:'Frostdrache', emoji:'🐉', size:9, moveMode:'jump',
     story:'Aufgestiegen aus den Ewigen Gletschern. Sein Atem friert Zeit selbst ein.',
     move:[[1,0,1,0,1],[0,1,1,1,0],[1,1,2,1,1],[0,1,1,1,0],[1,0,1,0,1]] },
-  { id:3, name:'Dornenhexe', emoji:'🧙‍♀️', size:1,
+  { id:3, name:'Dornenhexe', emoji:'🧙‍♀️', size:1, moveMode:'slide',
     story:'Eine Botanikerin, die die Grenze zwischen Pflanze und Magie überschritt.',
     move:[[0,0,1,0,0],[0,0,1,0,0],[1,1,2,1,1],[0,0,1,0,0],[0,0,1,0,0]] },
-  { id:4, name:'Eisengolem', emoji:'🤖', size:4,
+  { id:4, name:'Eisengolem', emoji:'🤖', size:4, moveMode:'jump',
     story:'Erschaffen von einem vergessenen Magier als ewiger Torwächter.',
     move:[[0,0,0,0,0],[0,0,1,0,0],[0,1,2,1,0],[0,0,1,0,0],[0,0,0,0,0]] },
-  { id:5, name:'Blitzfalke', emoji:'🦅', size:1,
+  { id:5, name:'Blitzfalke', emoji:'🦅', size:1, moveMode:'jump',
     story:'Vogel aus einer anderen Dimension. Fliegt zwischen Blitzen.',
     move:[[1,0,0,0,1],[0,0,0,0,0],[0,0,2,0,0],[0,0,0,0,0],[1,0,0,0,1]] },
-  { id:6, name:'Nebelgeist', emoji:'👻', size:1,
+  { id:6, name:'Nebelgeist', emoji:'👻', size:1, moveMode:'jump',
     story:'Überrest eines alten Krieges. Durchwandert Mauern ohne Widerstand.',
     move:[[1,1,1,1,1],[1,0,0,0,1],[1,0,2,0,1],[1,0,0,0,1],[1,1,1,1,1]] },
-  { id:7, name:'Erdriese', emoji:'🏔️', size:9,
+  { id:7, name:'Erdriese', emoji:'🏔️', size:9, moveMode:'jump',
     story:'Lebt seit Jahrmillionen im Kern der Erde. Langsam, aber unaufhaltsam.',
     move:[[0,1,0,1,0],[1,0,0,0,1],[0,0,2,0,0],[1,0,0,0,1],[0,1,0,1,0]] },
-  { id:8, name:'Sternenelf', emoji:'🧝', size:4,
+  { id:8, name:'Sternenelf', emoji:'🧝', size:4, moveMode:'jump',
     story:'Hüter der Himmelskarten. Sieht die Zukunft in Sternkonstellationen.',
     move:[[0,0,1,0,0],[0,1,1,1,0],[1,1,2,1,1],[0,1,1,1,0],[0,0,1,0,0]] },
+  { id:9, name:'Cult-Imperator', emoji:'👑', size:1, moveMode:'jump', isKing:true,
+    story:'Das oberste Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt er, zerfällt die gesamte Ordnung.',
+    move:[[0,0,0,0,0],[0,1,1,1,0],[0,1,2,1,0],[0,1,1,1,0],[0,0,0,0,0]] },
 ];
 
 // ---------------------------------------------------------------
@@ -880,10 +889,12 @@ function defaultSaveData() {
   return {
     // Wer das Spiel zum ersten Mal startet, besitzt noch keine Figuren.
     // (Zum Testen ohne NFC-Hardware: die ersten 3 sind vorab freigeschaltet.)
+    // Der König (id 9) ist Pflicht und daher immer von Anfang an dabei.
     collection: {
       1: { owned:true,  kills:34, uses:18, isNew:false },
       3: { owned:true,  kills:18, uses:22, isNew:false },
       5: { owned:true,  kills:29, uses:15, isNew:false },
+      9: { owned:true,  kills:0,  uses:0,  isNew:false },
     },
     stats: { gamesPlayed:0, wins:0, losses:0 }
   };
@@ -941,6 +952,19 @@ function ownedFigures() {
   return FIGURES.filter(f => f.owned);
 }
 
+// Der König ist Pflicht: ohne ihn dabei kann nicht gespielt werden,
+// und sein Tod beendet die Schlacht sofort (unabhängig von übrigen Figuren).
+function isKingId(id) {
+  const f = FIGURES_CATALOG.find(x => x.id === id);
+  return !!(f && f.isKing);
+}
+
+// Prüft während der Platzierungsphase, ob der Spieler seinen König
+// tatsächlich aufs Feld gestellt hat (nicht nur ausgewählt, sondern platziert).
+function hasPlacedKing() {
+  return pieces.some(p => p.owner==='player' && isKingId(p.id));
+}
+
 let currentFig = null;
 let selectedFigs = new Set();
 let boardSize = 8;
@@ -971,7 +995,7 @@ function renderCollection() {
   }
   owned.forEach(f => {
     const d = document.createElement('div');
-    d.className = 'fig-card' + (f.new ? ' new' : '');
+    d.className = 'fig-card' + (f.new ? ' new' : '') + (f.isKing ? ' king-glow' : '');
     d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name">${f.name}</span><span class="fig-power">${f.kills} Kills</span><span class="fig-size">${sizeLabel(f.size)}</span>`;
     d.onclick = () => { markFigSeen(f.id); openFigModal(f); };
     grid.appendChild(d);
@@ -994,7 +1018,7 @@ function renderKodex() {
   FIGURES.forEach(f => {
     const d = document.createElement('div');
     if (f.owned) {
-      d.className = 'fig-card';
+      d.className = 'fig-card' + (f.isKing ? ' king-glow' : '');
       d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name">${f.name}</span><span class="fig-power">${sizeLabel(f.size)}</span><span class="fig-size">${f.kills}⚔️</span>`;
       d.onclick = () => openFigModal(f);
     } else {
@@ -1044,7 +1068,7 @@ function renderFigSelect() {
   }
   owned.forEach(f => {
     const d = document.createElement('div');
-    d.className = 'fig-card' + (selectedFigs.has(f.id) ? ' selected' : '');
+    d.className = 'fig-card' + (selectedFigs.has(f.id) ? ' selected' : '') + (f.isKing ? ' king-glow' : '');
     d.style.borderColor = selectedFigs.has(f.id) ? 'var(--accent2)' : '';
     d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name" style="font-size:10px;">${f.name}</span><span class="fig-size">${sizeLabel(f.size)}</span>`;
     d.onclick = () => { selectedFigs.has(f.id) ? selectedFigs.delete(f.id) : selectedFigs.add(f.id); renderFigSelect(); };
@@ -1057,8 +1081,8 @@ function sizeLabel(s) { return s===1?'1×1':s===4?'2×2':'3×3'; }
 function openFigModal(f) {
   currentFig = f;
   document.getElementById('m-emoji').textContent = f.emoji;
-  document.getElementById('m-name').textContent = f.name;
-  document.getElementById('m-size').textContent = 'Größe: ' + sizeLabel(f.size);
+  document.getElementById('m-name').textContent = (f.isKing ? '👑 ' : '') + f.name;
+  document.getElementById('m-size').textContent = 'Größe: ' + sizeLabel(f.size) + ' · ' + (f.moveMode==='slide' ? 'Gleitet' : 'Springt');
   document.getElementById('m-story').textContent = f.story;
 
   const mc = document.getElementById('m-move');
@@ -1134,6 +1158,8 @@ function ingestScannedFigure(data) {
       size: data.size ?? 1,
       story: data.story ?? '',
       move: data.move ?? [[0,0,0,0,0],[0,0,0,0,0],[0,0,2,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      moveMode: data.moveMode === 'slide' ? 'slide' : 'jump',
+      isKing: !!data.isKing,
     };
     FIGURES_CATALOG.push(fig);
   }
@@ -1263,7 +1289,7 @@ function drawOverlays(outerEl, piecesToDraw, selAnchor, moveDests) {
     const [ar,ac] = p.anchor;
     const isSel = selAnchor && selAnchor[0]===ar && selAnchor[1]===ac;
     const ov = document.createElement('div');
-    ov.className = 'piece-overlay ' + p.owner + (isSel?' sel':'');
+    ov.className = 'piece-overlay ' + p.owner + (isSel?' sel':'') + (f && f.isKing ? ' king-glow' : '');
     ov.style.cssText = `left:${ac*CELL_PX}px;top:${ar*CELL_PX}px;width:${span*CELL_PX}px;height:${span*CELL_PX}px;font-size:${Math.round(span*CELL_PX*0.58)}px;line-height:1;`;
     ov.textContent = p.emoji;
     outerEl.appendChild(ov);
@@ -1272,6 +1298,11 @@ function drawOverlays(outerEl, piecesToDraw, selAnchor, moveDests) {
 
 // --- PLACEMENT PHASE ---
 function launchGame() {
+  if (![...selectedFigs].some(isKingId)) {
+    showToast('👑 Wähle deinen König aus, bevor du startest!');
+    return;
+  }
+
   document.getElementById('game-menu').style.display = 'none';
   document.getElementById('placement-phase').style.display = 'block';
   placementUsed = new Set();
@@ -1292,9 +1323,13 @@ function launchGame() {
   } else {
     document.getElementById('start-battle-btn').style.display = 'block';
     document.getElementById('placement-mp-continue-btn').style.display = 'none';
-    // Solo-Modus: Gegner automatisch in die oberen Reihen setzen
+    // Solo-Modus: Gegner automatisch in die oberen Reihen setzen.
+    // Der Gegner braucht ebenfalls zwingend einen eigenen König.
     let ec = 0;
-    FIGURES.filter(f=>!selectedFigs.has(f.id)).slice(0,4).forEach(f => {
+    const enemyKing = FIGURES_CATALOG.find(f => f.isKing);
+    const enemyRest = FIGURES.filter(f=>!selectedFigs.has(f.id) && !f.isKing).slice(0,3);
+    const enemyRoster = enemyKing ? [enemyKing, ...enemyRest] : enemyRest;
+    enemyRoster.forEach(f => {
       const span = figSpan(f);
       if (ec+span <= boardSize) {
         pieces.push({ owner:'enemy', id:f.id, emoji:f.emoji, anchor:[0,ec] });
@@ -1310,6 +1345,7 @@ function launchGame() {
 // Sender hat seine Aufstellung fertig → weiter zum Multiplayer-Modal mit QR-Code
 function continueAsSenderAfterPlacement() {
   if (!pieces.some(p=>p.owner==='player')) { showToast('Platziere zuerst mindestens eine Figur!'); return; }
+  if (!hasPlacedKing()) { showToast('👑 Platziere zuerst deinen König!'); return; }
   document.getElementById('placement-phase').style.display = 'none';
   document.getElementById('mp-modal').classList.add('open');
   document.getElementById('mp-role-select').style.display = 'none';
@@ -1340,7 +1376,7 @@ function renderPlacementHand() {
     const isSelected = placementSelected===id;
     const isUsed = placementUsed.has(id);
     const d = document.createElement('div');
-    d.className = 'hand-fig'+(isSelected?' selected':'')+(isUsed?' used':'');
+    d.className = 'hand-fig'+(isSelected?' selected':'')+(isUsed?' used':'')+(f.isKing?' king-glow':'');
     d.innerHTML = `<span class="hf-emoji">${f.emoji}</span><span class="hf-name">${f.name}</span><span class="hf-size">${sizeLabel(f.size)}</span>`;
     d.onclick = () => {
       placementSelected = (placementSelected===id) ? null : id;
@@ -1422,6 +1458,7 @@ function removePlacedFig(id) {
 
 function startBattle() {
   if (!pieces.some(p=>p.owner==='player')) { showToast('Platziere zuerst mindestens eine Figur!'); return; }
+  if (!hasPlacedKing()) { showToast('👑 Platziere zuerst deinen König!'); return; }
   document.getElementById('placement-phase').style.display = 'none';
   document.getElementById('game-board').style.display = 'block';
   gameState = { pieces: pieces.map(p=>({...p, anchor:[...p.anchor]})) };
@@ -1475,14 +1512,18 @@ function updateTurnUI() {
 }
 
 function checkGameOver() {
-  const playerAlive = gameState.pieces.some(p=>p.owner==='player');
-  const enemyAlive = gameState.pieces.some(p=>p.owner==='enemy');
-  if (!enemyAlive || !playerAlive) {
+  // Verloren ist, wer entweder keine Figuren mehr hat ODER dessen König gefallen ist —
+  // der König-Tod entscheidet die Schlacht sofort, unabhängig von übrigen Figuren.
+  const playerLost = !gameState.pieces.some(p=>p.owner==='player')
+    || !gameState.pieces.some(p=>p.owner==='player' && isKingId(p.id));
+  const enemyLost = !gameState.pieces.some(p=>p.owner==='enemy')
+    || !gameState.pieces.some(p=>p.owner==='enemy' && isKingId(p.id));
+  if (playerLost || enemyLost) {
     if (!gameOverHandled) {
       gameOverHandled = true;
       saveData.stats.gamesPlayed += 1;
-      if (!enemyAlive) { saveData.stats.wins += 1; showToast('🏆 Du hast gewonnen!'); }
-      else { saveData.stats.losses += 1; showToast('💀 Du hast verloren!'); }
+      if (enemyLost) { saveData.stats.wins += 1; showToast('👑 Der gegnerische König ist gefallen — du hast gewonnen!'); }
+      else { saveData.stats.losses += 1; showToast('💀 Dein König ist gefallen — du hast verloren!'); }
       saveSave();
       renderStats();
     }
@@ -1614,6 +1655,15 @@ function getMovesFor([ar, ac], owner) {
   const ownOcc = new Set();
   gameState.pieces.filter(x=>x.owner===owner&&x!==p).forEach(x=>pieceCellsG(x).forEach(([r,c])=>ownOcc.add(r+','+c)));
 
+  // Für Gleit-Figuren (moveMode:'slide'): alle belegten Felder beider Seiten,
+  // um den Weg zwischen Start und Ziel auf Blockaden zu prüfen. Sprung-Figuren
+  // (Standard) ignorieren andere Figuren zwischen Start und Ziel komplett.
+  let allOcc = null;
+  if (fig.moveMode === 'slide') {
+    allOcc = new Set();
+    gameState.pieces.filter(x=>x!==p).forEach(x=>pieceCellsG(x).forEach(([r,c])=>allOcc.add(r+','+c)));
+  }
+
   const result = [];
   fig.move.forEach((row,ri) => row.forEach((v,ci) => {
     if (v!==1) return;
@@ -1626,6 +1676,24 @@ function getMovesFor([ar, ac], owner) {
     const nc = figCells(span,tr,tc);
     if (nc.some(([r,c])=>r<0||r>=n||c<0||c>=n)) return;
     if (nc.some(([r,c])=>ownOcc.has(r+','+c))) return;
+
+    if (allOcc) {
+      // Blockade nur entlang gerader Linien prüfbar (horizontal/vertikal/diagonal).
+      // Sprunghafte Muster (z.B. Springer-artige Versätze) haben keinen
+      // sinnvollen "Weg" und werden wie gehabt nicht blockiert.
+      const isStraightLine = dr===0 || dc===0 || Math.abs(dr)===Math.abs(dc);
+      if (isStraightLine) {
+        const steps = Math.max(Math.abs(dr), Math.abs(dc));
+        const stepR = dr/steps, stepC = dc/steps;
+        let blocked = false;
+        for (let s=1; s<steps; s++) {
+          const iCells = figCells(span, ar+stepR*s, ac+stepC*s);
+          if (iCells.some(([r,c])=>allOcc.has(r+','+c))) { blocked = true; break; }
+        }
+        if (blocked) return;
+      }
+    }
+
     result.push([tr,tc]);
   }));
   return result;
@@ -1706,7 +1774,7 @@ function renderHostFigSelect() {
   FIGURES.forEach(f => {
     const d = document.createElement('div');
     const sel = hostSelectedFigs.has(f.id);
-    d.className = 'fig-card';
+    d.className = 'fig-card' + (f.isKing ? ' king-glow' : '');
     d.style.borderColor = sel ? 'var(--accent2)' : '';
     d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name" style="font-size:10px;">${f.name}</span><span class="fig-size">${sizeLabel(f.size)}</span>`;
     d.onclick = () => {
@@ -1730,6 +1798,7 @@ function hostLineupDone() {
 // Host hat seine Aufstellung fertig → weiter zum QR-Scan
 function continueAsHostAfterPlacement() {
   if (!pieces.some(p=>p.owner==='player')) { showToast('Platziere zuerst mindestens eine Figur!'); return; }
+  if (!hasPlacedKing()) { showToast('👑 Platziere zuerst deinen König!'); return; }
   document.getElementById('placement-phase').style.display = 'none';
   document.getElementById('mp-modal').classList.add('open');
   document.getElementById('host-lineup').style.display = 'none';
@@ -1907,6 +1976,11 @@ function handleScannedLineup(raw, statusEl) {
     // die in diesem Katalog noch unbekannt ist. Das Spiel läuft trotzdem weiter,
     // aber mit weniger gegnerischen Figuren als eigentlich gesendet wurden.
     showToast(`⚠️ ${unknownCount} unbekannte Figur(en) im Katalog fehlen und wurden ausgelassen.`);
+  }
+  if (!enemyPieces.some(p => isKingId(p.id))) {
+    // Der König des Senders war unter den unbekannten Figuren — ohne ihn im
+    // eigenen Katalog kann der Kampf nicht wie vorgesehen ausgetragen werden.
+    showToast('⚠️ Der König des Senders fehlt in deinem Katalog — Kampf ggf. sofort beendet!');
   }
 
   pieces = pieces.filter(p => p.owner === 'player').concat(enemyPieces);

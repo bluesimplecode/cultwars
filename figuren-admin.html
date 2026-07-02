@@ -74,7 +74,12 @@
 
   .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .tag { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--text2); cursor: pointer; }
-  .tag.sel { background: rgba(220,38,38,0.2); border-color: var(--accent2); color: var(--accent2); }
+  .tag.sel, .tag.msel { background: rgba(220,38,38,0.2); border-color: var(--accent2); color: var(--accent2); }
+
+  .king-check { display: flex; align-items: center; gap: 8px; margin-top: 14px; cursor: pointer; font-size: 12px; color: var(--text2); }
+  .king-check input { width: auto; accent-color: var(--gold); }
+  .preview-badge.king-badge { display: none; background: rgba(245,158,11,0.18); color: var(--gold); border-color: rgba(245,158,11,0.5); margin-left: 6px; }
+  .fig-item.king { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
 
   .fig-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
   .fig-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
@@ -136,6 +141,18 @@
             <div class="tag" onclick="selectSize(this,'9')">3×3 (9 Felder)</div>
           </div>
           <input type="hidden" id="f-size" value="1">
+
+          <label>Bewegungsart</label>
+          <div class="tag-list">
+            <div class="tag msel" onclick="selectMoveMode(this,'jump')">🦘 Springt (ignoriert andere Figuren)</div>
+            <div class="tag" onclick="selectMoveMode(this,'slide')">🧱 Gleitet (wird blockiert)</div>
+          </div>
+          <input type="hidden" id="f-move-mode" value="jump">
+
+          <label class="king-check">
+            <input type="checkbox" id="f-is-king" onchange="updatePreview()">
+            <span>👑 Ist der König (oberstes Cultwesen — Pflichtfigur, ihr Tod bedeutet Niederlage)</span>
+          </label>
         </div>
 
         <div class="panel" style="margin-top:16px;">
@@ -175,6 +192,7 @@
             <div class="preview-emoji" id="p-emoji">❓</div>
             <div class="preview-name" id="p-name">Neue Figur</div>
             <div class="preview-badge" id="p-size">1×1</div>
+            <div class="preview-badge king-badge" id="p-king">👑 KÖNIG</div>
             <div class="preview-story" id="p-story">Keine Story.</div>
           </div>
         </div>
@@ -308,12 +326,21 @@ function selectSize(el, s) {
   updatePayload();
 }
 
+function selectMoveMode(el, mode) {
+  el.closest('.tag-list').querySelectorAll('.tag').forEach(t=>t.classList.remove('msel'));
+  el.classList.add('msel');
+  document.getElementById('f-move-mode').value = mode;
+  updatePayload();
+}
+
 function updatePreview() {
   const name = document.getElementById('f-name').value || 'Neue Figur';
   const story = document.getElementById('f-story').value || 'Keine Story.';
+  const isKing = document.getElementById('f-is-king').checked;
   document.getElementById('p-emoji').textContent = selectedEmoji;
   document.getElementById('p-name').textContent = name;
   document.getElementById('p-story').textContent = story;
+  document.getElementById('p-king').style.display = isKing ? 'inline-block' : 'none';
   updatePayload();
 }
 
@@ -323,6 +350,8 @@ function buildFigureData() {
     name: document.getElementById('f-name').value || 'Unbenannt',
     emoji: selectedEmoji,
     size: parseInt(document.getElementById('f-size').value) || 1,
+    moveMode: document.getElementById('f-move-mode').value || 'jump',
+    isKing: document.getElementById('f-is-king').checked,
     story: document.getElementById('f-story').value || '',
     move: movePattern,
     kills: 0,
@@ -390,11 +419,11 @@ function renderLibrary() {
   document.getElementById('lib-count').textContent = library.length + ' Figuren';
   if (library.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:30px;font-size:13px;">Noch keine Figuren gespeichert.</div>'; return; }
   list.innerHTML = library.map((f,i) => `
-    <div class="fig-item">
+    <div class="fig-item${f.isKing?' king':''}">
       <div class="fig-item-emoji">${f.emoji}</div>
       <div class="fig-item-info">
-        <div class="fig-item-name">${f.name}</div>
-        <div class="fig-item-meta">${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${new Date(f.created).toLocaleDateString('de-DE')}</div>
+        <div class="fig-item-name">${f.isKing?'👑 ':''}${f.name}</div>
+        <div class="fig-item-meta">${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${f.moveMode==='slide'?'Gleitet':'Springt'} · ${new Date(f.created).toLocaleDateString('de-DE')}</div>
       </div>
       <div class="fig-item-actions">
         <button class="icon-btn nfc" onclick="writeFromLib(${i})" title="NFC schreiben">📡</button>
