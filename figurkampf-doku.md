@@ -82,6 +82,7 @@
 | Sender-Figuren werden beim Host vertikal gespiegelt platziert | ✅ |
 | Warnung bei unbekannten Figuren-IDs im empfangenen QR-Code | ✅ |
 | Kamera-Ressource wird sauber freigegeben nach Scan-Abbruch | ✅ |
+| Multiplayer-Kampfphase: Host + Sender abwechselnd am selben Gerät (kein KI-Zug) | ✅ |
 | PWA: Manifest + Service Worker (installierbar, Offline-Caching) | ✅ |
 | App-Icon (192/512, maskable) + Favicon | ✅ |
 

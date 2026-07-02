@@ -765,12 +765,12 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
         <div class="mp-role" onclick="mpRole('host')">
           <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
           <span>Host</span>
-          <small>Erwartet NFC vom Sender</small>
+          <small>Erwartet QR-Code vom Sender</small>
         </div>
         <div class="mp-role" onclick="mpRole('sender')">
           <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           <span>Sender</span>
-          <small>Schickt Aufstellung via NFC</small>
+          <small>Schickt Aufstellung via QR-Code</small>
         </div>
       </div>
     </div>
@@ -1429,6 +1429,7 @@ function startBattle() {
   currentTurn = 'player';
   roundNum = 1;
   gameOverHandled = false;
+  isLocalMultiplayer = false;
 
   // Jede platzierte eigene Figur zählt als "gewählt" für die Statistik
   pieces.filter(p=>p.owner==='player').forEach(p => {
@@ -1454,6 +1455,7 @@ function endGame() {
 let currentTurn = 'player'; // 'player' | 'enemy'
 let roundNum = 1;
 let gameOverHandled = false; // verhindert doppeltes Zählen falls checkGameOver mehrfach triggert
+let isLocalMultiplayer = false; // true = Host + Sender-Aufstellung am selben Gerät, kein KI-Zug
 
 function updateTurnUI() {
   const dot = document.getElementById('turn-dot');
@@ -1462,12 +1464,12 @@ function updateTurnUI() {
   const msg = document.getElementById('game-msg');
   if (currentTurn === 'player') {
     dot.style.background = 'var(--accent2)';
-    owner.textContent = '🟣 Du bist am Zug';
+    owner.textContent = isLocalMultiplayer ? '🟣 Spieler 1 ist am Zug' : '🟣 Du bist am Zug';
     msg.textContent = 'Wähle eine deiner Figuren zum Bewegen';
   } else {
     dot.style.background = 'var(--red)';
-    owner.textContent = '🔴 Gegner ist am Zug';
-    msg.textContent = 'Der Gegner überlegt...';
+    owner.textContent = isLocalMultiplayer ? '🔴 Spieler 2 ist am Zug' : '🔴 Gegner ist am Zug';
+    msg.textContent = isLocalMultiplayer ? 'Gib das Gerät weiter' : 'Der Gegner überlegt...';
   }
   label.textContent = `Runde ${roundNum}`;
 }
@@ -1496,7 +1498,7 @@ function endTurn() {
     currentTurn = 'enemy';
     updateTurnUI();
     renderBoard();
-    setTimeout(enemyTurn, 700);
+    if (!isLocalMultiplayer) setTimeout(enemyTurn, 700);
   } else {
     currentTurn = 'player';
     roundNum++;
@@ -1545,14 +1547,17 @@ function pieceCellsG(p) {
 }
 
 function handleCellClick(r, c) {
-  if (currentTurn !== 'player') return; // block input during enemy turn
+  // Solo: Eingabe während des KI-Zugs blockieren. Im Local-Multiplayer ist
+  // 'enemy' der zweite menschliche Spieler am selben Gerät, der darf klicken.
+  if (!isLocalMultiplayer && currentTurn !== 'player') return;
+  const activeOwner = currentTurn;
 
   const hit = gameState.pieces.find(p => pieceCellsG(p).some(([pr,pc])=>pr===r&&pc===c));
 
   if (selectedCell) {
-    const moves = getMovesFor(selectedCell, 'player');
+    const moves = getMovesFor(selectedCell, activeOwner);
     if (moves.some(([mr,mc])=>mr===r&&mc===c)) {
-      doMove(selectedCell, [r,c], 'player');
+      doMove(selectedCell, [r,c], activeOwner);
       selectedCell = null;
       endTurn();
       return;
@@ -1560,7 +1565,7 @@ function handleCellClick(r, c) {
     selectedCell = null;
   }
 
-  if (hit && hit.owner==='player') selectedCell = [...hit.anchor];
+  if (hit && hit.owner===activeOwner) selectedCell = [...hit.anchor];
   else selectedCell = null;
   renderBoard();
 }
@@ -1941,6 +1946,7 @@ function launchGameFromExistingPlacement() {
   currentTurn = 'player';
   roundNum = 1;
   gameOverHandled = false;
+  isLocalMultiplayer = true;
   pieces.filter(p=>p.owner==='player').forEach(p => {
     if (saveData.collection[p.id]) saveData.collection[p.id].uses += 1;
   });
