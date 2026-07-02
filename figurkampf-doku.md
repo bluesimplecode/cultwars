@@ -125,7 +125,7 @@ Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcode
 **Mittelfristig**
 - [ ] Multiplayer: Ergebnis-Rückkanal Host → Sender (derzeit kein Rückkanal; Optionen: QR-Code auf Host-Bildschirm, den Sender scannt)
 - [ ] Platzierungsphase im Multiplayer: Gegner-Startpositionen für den Sender visuell anzeigen (er sieht nur sein eigenes Feld, nicht das des Hosts)
-- [ ] Privatsphäre-Screen beim Multiplayer-Zugwechsel ("Handy übergeben"-Overlay, damit kein Spieler die Aufstellung des anderen sieht)
+- [ ] Privatsphäre-Screen beim Multiplayer-Zugwechsel ("Handy übergeben"-Overlay, damit kein Spieler die Aufstellung des anderen sieht) — bisher nur ein Text-Hinweis ("Gib das Gerät weiter") in der Zug-Anzeige, kein Overlay das das Feld verdeckt
 - [ ] Zugzwang-Prüfung (Spiel endet auch, wenn ein Spieler keine gültigen Züge mehr hat)
 - [ ] Sprung- vs. Gleit-Bewegung (aktuell können alle Figuren durch andere hindurchspringen — Türme/Läufer sollten geblockt werden)
 - [ ] Figuren-Sync zwischen Admin-Tool und Haupt-App (aktuell manuell per NFC-Tag; könnte via exportiertem JSON-Import oder geteiltem localStorage-Namespace gehen)
