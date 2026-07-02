@@ -1093,8 +1093,8 @@ function filterFigs(el, type) {
 // ---------------------------------------------------------------
 // ECHTES NFC (Web NFC API)
 // Funktioniert nur: Chrome auf Android, über HTTPS, nach Nutzer-Geste.
-// Auf allen anderen Plattformen (iOS, Desktop, andere Browser) gibt es
-// einen Fallback auf den simulierten Scan, damit die App nicht abstürzt.
+// Auf allen anderen Plattformen (iOS, Desktop, andere Browser) ist NFC
+// schlicht nicht verfügbar — es gibt keine Simulation als Ersatz.
 // ---------------------------------------------------------------
 function nfcSupported() {
   return typeof NDEFReader !== 'undefined';
@@ -1145,7 +1145,6 @@ function ingestScannedFigure(data) {
 async function scanNFC() {
   if (!nfcSupported()) {
     showToast('⚠️ NFC wird auf diesem Gerät/Browser nicht unterstützt.\nNutze Chrome auf Android.');
-    scanNFCFallback();
     return;
   }
 
@@ -1184,23 +1183,6 @@ async function scanNFC() {
       showToast('⚠️ NFC-Fehler: ' + err.message);
     }
   }
-}
-
-// Fallback für Geräte/Browser ohne Web NFC (Desktop, iOS, Testumgebung hier im Chat).
-// Schaltet wie bisher eine zufällige, noch nicht besessene Figur frei,
-// damit man das Spiel auch ohne NFC-Hardware durchspielen kann.
-function scanNFCFallback() {
-  setTimeout(() => {
-    const notOwned = FIGURES_CATALOG.filter(f => !saveData.collection[f.id]?.owned);
-    if (notOwned.length === 0) {
-      showToast('✅ Du besitzt schon alle Figuren!');
-      return;
-    }
-    const fig = notOwned[Math.floor(Math.random() * notOwned.length)];
-    addFigureToCollection(fig.id);
-    renderCollection();
-    showToast(`🧪 (Simuliert) ${fig.emoji} ${fig.name} gescannt!`);
-  }, 1200);
 }
 
 function showToast(msg) {
@@ -1978,7 +1960,7 @@ const nfcNote = document.getElementById('nfc-support-note');
 if (nfcNote) {
   nfcNote.textContent = nfcSupported()
     ? '✅ NFC verfügbar auf diesem Gerät'
-    : '⚠️ Kein echtes NFC erkannt — Scan läuft im Testmodus (Chrome auf Android nötig)';
+    : '⚠️ Kein NFC erkannt — Chrome auf Android nötig';
 }
 
 // PWA: Service Worker für Offline-Caching registrieren (nur über HTTPS/localhost verfügbar)

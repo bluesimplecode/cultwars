@@ -37,7 +37,6 @@
 - Figuren erstellen: Name, Emoji, Größe, Story, Bewegungsmuster
 - Figuren-Bibliothek (localStorage)
 - Fertige Figuren auf NFC-Tags schreiben (Web NFC API)
-- NFC-Tags testweise einlesen zur Verifikation
 
 ---
 
@@ -62,7 +61,6 @@
 | Figuren-Sammlung mit NEU-Badge und Größen-Filter | ✅ |
 | Figur-Detailansicht (Story, Bewegungsmuster, Kampfstats) | ✅ |
 | NFC-Scan mit Web NFC API (`NDEFReader`) | ✅ |
-| NFC-Fallback (Simulation) für nicht-Android-Browser | ✅ |
 | NFC-Support-Hinweis im UI | ✅ |
 | Neue Figuren via NFC auch zum Katalog hinzufügen, falls unbekannt | ✅ |
 | Kodex mit Silhouette für ungescannte Figuren | ✅ |
@@ -94,8 +92,7 @@
 | Figur erstellen (Name, Emoji-Picker, Größe, Story) | ✅ |
 | 5×5 Bewegungsmuster per Klick editieren | ✅ |
 | Bewegungsmuster-Vorlagen (Läufer, Turm, Springer, König, Ring, Kreuz) | ✅ |
-| NFC-Tag beschreiben (Web NFC `write`) | ✅ (echter `NDEFReader.write()`-Aufruf, Simulation als Fallback) |
-| NFC-Tag einlesen zur Verifikation | ✅ (simuliert + API-ready) |
+| NFC-Tag beschreiben (Web NFC `write`) | ✅ (echter `NDEFReader.write()`-Aufruf, keine Simulation) |
 | Figuren-Bibliothek in localStorage | ✅ |
 | JSON-Export aller Figuren | ✅ |
 | NFC Payload-Vorschau (Bytes-Anzeige) | ✅ |
@@ -106,7 +103,7 @@
 
 Die App ist ein vollständig funktionsfähiger **Klick-Prototyp** im Browser und als PWA installierbar. Alle Kern-Features sind implementiert und verbunden. Die wichtigsten Einschränkungen betreffen Hardware-APIs, die nur auf echten Android-Geräten in Chrome testbar sind:
 
-- **Web NFC** (`NDEFReader`, Lesen *und* Schreiben) ist im Browser nur auf Android/Chrome verfügbar und kann in keinem anderen Kontext (Desktop, iOS, Claude-Vorschau) getestet werden. Der Fallback (zufälliger Simulations-Scan bzw. simuliertes Schreiben) springt automatisch ein.
+- **Web NFC** (`NDEFReader`, Lesen *und* Schreiben) ist im Browser nur auf Android/Chrome verfügbar und kann in keinem anderen Kontext (Desktop, iOS, Claude-Vorschau) getestet werden. Es gibt keine Simulation mehr als Ersatz — ohne Web-NFC-Support zeigt die App nur einen Hinweis an.
 - **QR-Scan** funktioniert browserübergreifend (nativ via `BarcodeDetector` in Chrome/Android, via eingebetteter `jsQR`-Bibliothek in Firefox/Safari/Desktop). In der Claude-Vorschau ist Kamerazugriff aus Sicherheitsgründen nicht möglich.
 - **localStorage** funktioniert in der Claude-Artifact-Vorschau nicht (Browser-Beschränkung des Sandboxes). Auf einem echten Gerät funktioniert die Persistenz vollständig.
 - **Service Worker** braucht HTTPS oder `localhost` zum Registrieren (Browser-Sicherheitsanforderung); lokal getestet über `python -m http.server`.
@@ -118,7 +115,7 @@ Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcode
 ## ToDos
 
 **Kurzfristig (für echte Android-Nutzung)**
-- [x] Web NFC im Admin-Tool tatsächlich verdrahten (`write()`-Aufruf mit echtem NDEF-Record, nicht nur simuliert) — `writeFigureToTag()` nutzt `NDEFReader.write()` mit `text`-Record, Fallback-Simulation falls Web NFC nicht verfügbar
+- [x] Web NFC im Admin-Tool tatsächlich verdrahten (`write()`-Aufruf mit echtem NDEF-Record, nicht nur simuliert) — `writeFigureToTag()` nutzt `NDEFReader.write()` mit `text`-Record, zeigt bei fehlendem Web-NFC-Support nur eine Hinweismeldung (keine Simulation)
 - [x] NDEF-Record-Format zwischen Admin-Write und App-Scan abgeglichen — beide Seiten nutzen `recordType: 'text'` mit rohem JSON-String, passt zu `parseFigurePayload()`
 - [ ] Web NFC (Schreiben *und* Lesen) auf echtem Android-Gerät verifizieren — kann nicht aus der Entwicklungsumgebung getestet werden, nur Code-Review möglich
 - [x] PWA-Manifest + Service Worker → App installierbar machen + Offline-Caching (`manifest.json`, `service-worker.js`, in `figuren-spiel.html` eingebunden)
@@ -152,3 +149,4 @@ Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcode
 | **QR-Code als Hauptdatenaustausch via NFC-Tag als Zwischenspeicher** | NFC-Tags (NTAG215) haben mit 504 Bytes zu knapp Platz für große Aufstellungen; QR-Code auf Bildschirm ist einfacher und braucht keinen Extra-Tag |
 | **KI-Story im Spiel selbst** | Würde Internetverbindung im Spiel erfordern |
 | **KI-Story-Generierung im Admin-Tool** (`generateAIStory()`, Aufruf an `api.anthropic.com`) | Auf Wunsch entfernt; funktionierte ohnehin nur innerhalb der Claude-Sandbox (kein eingebetteter API-Key, direkter Browser-Call scheiterte außerhalb an CORS/Auth). Story-Text wird jetzt ausschließlich manuell eingegeben |
+| **Simuliertes NFC-Lesen/-Schreiben als Fallback** (`scanNFCFallback()` in der Haupt-App, `simulateScan()` + Simulations-Zweig in `writeFigureToTag()` im Admin-Tool) | Auf Wunsch entfernt; ohne echtes Web NFC (Chrome/Android) zeigt die App jetzt nur noch einen Hinweis statt zufällige/simulierte Ergebnisse vorzutäuschen |

@@ -237,13 +237,6 @@
       </button>
       <div class="status" id="nfc-status"></div>
     </div>
-
-    <div class="panel" style="margin-top:16px;">
-      <div class="panel-title">NFC Lesegerät / Test</div>
-      <p style="font-size:12px; color:var(--text2); margin-bottom:12px;">Scanne einen bereits beschriebenen Tag zum Testen.</p>
-      <button class="btn secondary" onclick="simulateScan()">🔍 Tag scannen (simulieren)</button>
-      <div id="scan-result" style="display:none; margin-top:12px; background:var(--surface2); border-radius:8px; padding:12px; font-size:12px; color:var(--text2);"></div>
-    </div>
   </div>
 </div>
 
@@ -366,9 +359,7 @@ function nfcWriteSupported() {
 async function writeFigureToTag(fig, statusEl) {
   const payload = JSON.stringify(fig);
   if (!nfcWriteSupported()) {
-    statusEl.textContent = '⚠️ Web NFC wird auf diesem Gerät/Browser nicht unterstützt (nur Chrome/Android). Simuliere Schreibvorgang...';
-    await new Promise(r => setTimeout(r, 1200));
-    statusEl.textContent = `🧪 (Simuliert) "${fig.name}" wäre auf NFC-Tag geschrieben worden.`;
+    statusEl.textContent = '⚠️ Web NFC wird auf diesem Gerät/Browser nicht unterstützt (nur Chrome/Android).';
     return;
   }
   try {
@@ -453,14 +444,6 @@ function writeNFCFromLib() {
   if (i === '') return;
   const f = library[parseInt(i)];
   writeFigureToTag(f, document.getElementById('nfc-status'));
-}
-
-function simulateScan() {
-  if (library.length === 0) { alert('Keine Figuren in der Bibliothek zum Testen.'); return; }
-  const f = library[Math.floor(Math.random() * library.length)];
-  const r = document.getElementById('scan-result');
-  r.style.display = 'block';
-  r.innerHTML = `<strong>✅ Tag erkannt!</strong><br>Figur: ${f.emoji} <strong>${f.name}</strong><br>Größe: ${f.size===1?'1×1':f.size===4?'2×2':'3×3'}<br>Payload: ${JSON.stringify(f).length} Bytes`;
 }
 
 // Init
