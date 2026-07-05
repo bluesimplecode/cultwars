@@ -1231,7 +1231,9 @@ function applyCorruptionTheme() {
   set('--text3', theme.text3);
   set('--border', `rgba(${hexToRgb(theme.accent).join(',')},${(0.25 + t*0.15).toFixed(2)})`);
   set('--vignette-opacity', (t*0.75).toFixed(3));
-  set('--bg-image-opacity', (t*0.55).toFixed(3));
+  // Sockelwert, damit bg.png schon vor der ersten zusätzlich gesammelten Figur
+  // leicht sichtbar ist, statt bei Spielstart komplett unsichtbar zu sein (0).
+  set('--bg-image-opacity', (0.15 + t*0.40).toFixed(3));
   body.classList.toggle('deep-corruption', extra >= 20);
 }
 
