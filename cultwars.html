@@ -466,11 +466,21 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     position: fixed;
     inset: 0;
     z-index: -1;
-    background: url('bg.png') center/cover no-repeat fixed;
-    filter: grayscale(1) contrast(1.6);
     opacity: var(--bg-image-opacity, 0);
     transition: opacity 2.5s ease;
     pointer-events: none;
+  }
+  /* Bild und Rot-Einfärbung liegen bewusst auf getrennten Ebenen (::before/::after):
+     ein "filter" auf einem Element wirkt auf dessen komplettes gerendertes
+     Teilbaum-Ergebnis inkl. Kind-Overlays — läge der Rot-Tön auf demselben
+     Element wie der Grayscale-Filter, würde er von genau diesem wieder
+     entfärbt werden. */
+  #bg-layer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('bg.png') center/cover no-repeat fixed;
+    filter: grayscale(1) contrast(1.6);
   }
   #bg-layer::after {
     content: '';
@@ -769,12 +779,57 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   <div class="stat-grid">
     <div class="stat-tile"><div class="val" id="stat-games">0</div><div class="lbl">Spiele gesamt</div></div>
     <div class="stat-tile"><div class="val" id="stat-wins">0</div><div class="lbl">Siege</div></div>
+    <div class="stat-tile"><div class="val" id="stat-draws">0</div><div class="lbl">Unentschieden</div></div>
     <div class="stat-tile" style="grid-column:1/-1;"><div class="val" id="stat-kills">0</div><div class="lbl">Kills total</div></div>
   </div>
 
   <div class="card">
     <div class="card-title">Figur-Performance</div>
     <div id="stats-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Speicherstand</div>
+    <p style="font-size:11px; color:var(--text3); margin-bottom:10px;">Sichere deine Sammlung und Statistiken als Datei oder stelle sie auf einem anderen Gerät wieder her.</p>
+    <div style="display:flex; gap:8px;">
+      <button class="action-btn secondary" style="flex:1; margin:0;" onclick="exportSaveData()">⬇️ Exportieren</button>
+      <button class="action-btn secondary" style="flex:1; margin:0;" onclick="document.getElementById('import-file-input').click()">⬆️ Importieren</button>
+    </div>
+    <input type="file" id="import-file-input" accept="application/json,.json" style="display:none;" onchange="importSaveDataFile(this)">
+  </div>
+</div>
+
+<div class="page" id="page-regeln">
+  <div class="header">
+    <h1>Regel<span>werk</span></h1>
+    <p>Wie Cultwars gespielt wird</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎯 Ziel der Schlacht</div>
+    <p class="modal-story">Bringe das gegnerische Cultwesen zu Fall. Wer sein Cultwesen verliert, verliert sofort die Schlacht — unabhängig davon, wie viele andere Figuren noch auf dem Feld stehen. Verlieren beide Seiten ihr Cultwesen im selben Moment (etwa weil das schrumpfende Feld beide gleichzeitig erfasst), endet die Schlacht unentschieden.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧩 Aufstellung & Bewegung</div>
+    <p class="modal-story">Vor der Schlacht platzierst du alle deine gesammelten Figuren in deinen unteren 3 Reihen. Figuren sind 1×1, 2×2 oder 3×3 Felder groß. Springer-Figuren überspringen andere Figuren auf ihrem Bewegungsmuster einfach, Gleiter-Figuren werden von jeder Figur auf ihrem Weg blockiert. Landet eine Figur auf einem Feld, das eine gegnerische Figur belegt, wird diese geschlagen und vom Feld entfernt.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👑 Das Cultwesen</div>
+    <p class="modal-story">Jede Seite führt genau ein Cultwesen — eine Pflichtfigur, ohne die keine Aufstellung möglich ist. Je mehr Figuren du sammelst, desto mehr Titel (Name + Emoji) schaltest du für dein eigenes Cultwesen frei, wählbar im Kodex. Der computergesteuerte Gegner (Solo-Modus) tritt immer als "Simuliertes Cultwesen" mit 🤖 an; im Multiplayer trägt das gegnerische Cultwesen den vom Mitspieler gewählten Titel.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌀 Das schrumpfende Feld</div>
+    <p class="modal-story"><strong style="color:var(--text);">Wiederholung:</strong> Taucht am Ende einer Runde eine Feldaufstellung auf, die es in dieser Schlacht schon einmal gab, zieht sich das Feld rundherum um 1 Feld zusammen. Alle Figuren, die dadurch auf dem wegfallenden äußeren Rand stehen, werden geschlagen.</p>
+    <p class="modal-story"><strong style="color:var(--text);">Marathon:</strong> Dauert eine Schlacht länger als 66 volle Züge, schrumpft das Feld ab dann zusätzlich alle 2 Züge um 1 Feld — unabhängig von Wiederholungen.</p>
+    <p class="modal-story">Beide Effekte können beliebig oft und auch gemeinsam auftreten, bis das Feld nur noch 2×2 Felder groß ist. Kleiner wird es nicht.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📡 Multiplayer</div>
+    <p class="modal-story">Als Sender stellst du deine Figuren verdeckt auf und zeigst danach einen QR-Code, den der Host mit der Kamera scannt. Anschließend läuft die Schlacht komplett auf dem Host-Gerät — im Wechsel, wenn ihr am selben Gerät spielt (Host + Sender-Aufstellung), oder automatisch gegen die KI im Solo-Modus.</p>
   </div>
 </div>
 
@@ -795,6 +850,10 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   <button class="nav-btn" onclick="goPage('stats',this)">
     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     Statistiken
+  </button>
+  <button class="nav-btn" onclick="goPage('regeln',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Regeln
   </button>
 </nav>
 
@@ -958,7 +1017,7 @@ function defaultSaveData() {
     collection: {
       9: { owned:true, kills:0, uses:0, isNew:false },
     },
-    stats: { gamesPlayed:0, wins:0, losses:0 }
+    stats: { gamesPlayed:0, wins:0, losses:0, draws:0 }
   };
 }
 
@@ -969,7 +1028,8 @@ function loadSave() {
     const data = JSON.parse(raw);
     // Fallback-Werte falls Struktur unvollständig ist (z.B. nach App-Update)
     if (!data.collection) data.collection = {};
-    if (!data.stats) data.stats = { gamesPlayed:0, wins:0, losses:0 };
+    if (!data.stats) data.stats = { gamesPlayed:0, wins:0, losses:0, draws:0 };
+    if (data.stats.draws == null) data.stats.draws = 0;
     return data;
   } catch(e) {
     console.warn('Speicherstand konnte nicht gelesen werden, starte neu.', e);
@@ -986,6 +1046,51 @@ function saveSave() {
 }
 
 let saveData = loadSave();
+
+// Speicherstand (Sammlung + Statistiken) als Datei herunterladen.
+function exportSaveData() {
+  const json = JSON.stringify(saveData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cultwars-speicherstand-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('💾 Speicherstand exportiert!');
+}
+
+// Speicherstand aus einer zuvor exportierten Datei wiederherstellen —
+// überschreibt die aktuelle Sammlung, daher vorher nachfragen.
+function importSaveDataFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    input.value = '';
+    let data;
+    try {
+      data = JSON.parse(reader.result);
+      if (!data || typeof data !== 'object' || !data.collection || !data.stats) {
+        throw new Error('Ungültiges Format');
+      }
+    } catch(e) {
+      showToast('⚠️ Datei konnte nicht gelesen werden — ungültiger Speicherstand.');
+      return;
+    }
+    if (!confirm('Aktuellen Speicherstand wirklich mit der importierten Datei überschreiben?')) return;
+    saveData = data;
+    saveSave();
+    rebuildFigures();
+    renderCollection();
+    renderKodex();
+    renderStats();
+    showToast('✅ Speicherstand importiert!');
+  };
+  reader.readAsText(file);
+}
 
 // ---------------------------------------------------------------
 // TEST-CHEAT: ?maxed=N in der URL (z.B. cultwars.html?maxed=30) fügt N
@@ -1251,6 +1356,7 @@ function renderStats() {
   const s = saveData.stats;
   document.getElementById('stat-games').textContent = s.gamesPlayed;
   document.getElementById('stat-wins').textContent = s.wins;
+  document.getElementById('stat-draws').textContent = s.draws || 0;
   document.getElementById('stat-kills').textContent = ownedFigures().reduce((sum,f)=>sum+f.kills,0);
 
   const list = document.getElementById('stats-list');
@@ -1476,9 +1582,15 @@ function findAnchor(cells, r, c) {
 }
 
 // --- Game ---
+// Vom Spieler gewählte Feldgröße (6/8/10) — unabhängig von `boardSize`, das
+// während der Schlacht durch die Schrumpf-Regeln verändert wird. launchGame()
+// setzt boardSize bei jeder neuen Aufstellung auf diesen Wert zurück, damit
+// ein geschrumpftes Feld aus dem letzten Spiel nicht ins nächste übernommen wird.
+let selectedBoardSize = 8;
+
 function selectSize(el, s) {
   document.querySelectorAll('#game-menu .badges .badge').forEach(b => b.classList.remove('active'));
-  el.classList.add('active'); boardSize = parseInt(s);
+  el.classList.add('active'); selectedBoardSize = boardSize = parseInt(s);
 }
 
 function startSolo() { launchGame(); }
@@ -1539,6 +1651,9 @@ function launchGame() {
   // Keine manuelle Figuren-Auswahl mehr — Solo wie Multiplayer nehmen
   // automatisch alle Figuren mit, die der Spieler besitzt.
   selectedFigs = new Set(ownedFigures().map(f => f.id));
+  // Ein evtl. durch die Schrumpf-Regeln verkleinertes Feld aus der letzten
+  // Schlacht darf nicht in die neue Aufstellung übernommen werden.
+  boardSize = selectedBoardSize;
 
   document.getElementById('game-menu').style.display = 'none';
   document.getElementById('placement-phase').style.display = 'block';
@@ -1704,6 +1819,7 @@ function startBattle() {
   roundNum = 1;
   gameOverHandled = false;
   isLocalMultiplayer = false;
+  positionHistory = [];
 
   // Jede platzierte eigene Figur zählt als "gewählt" für die Statistik
   pieces.filter(p=>p.owner==='player').forEach(p => {
@@ -1730,6 +1846,60 @@ let currentTurn = 'player'; // 'player' | 'enemy'
 let roundNum = 1;
 let gameOverHandled = false; // verhindert doppeltes Zählen falls checkGameOver mehrfach triggert
 let isLocalMultiplayer = false; // true = Host + Sender-Aufstellung am selben Gerät, kein KI-Zug
+
+// ---------------------------------------------------------------
+// SCHRUMPF-REGELN (siehe Regeln-Tab für die spielerseitige Beschreibung):
+// 1) Wiederholt sich am Ende einer Runde eine bereits dagewesene Stellung,
+//    schrumpft das Feld rundherum um 1 Feld.
+// 2) Ab Runde 67 schrumpft das Feld zusätzlich alle 2 Runden — unabhängig
+//    von Wiederholungen — bis nur noch 2×2 übrig sind.
+// Beide schließen mit dem Entfernen (Schlagen) aller Figuren auf dem
+// wegfallenden äußeren Ring.
+// ---------------------------------------------------------------
+let positionHistory = []; // Stellungen (siehe boardSignature) am Ende jeder Runde dieser Schlacht
+const MARATHON_ROUND_THRESHOLD = 66; // ab dieser Rundenzahl greift die Marathon-Schrumpfung
+const MIN_BOARD_SIZE = 2;
+
+// Ordnungsunabhängige, deterministische Repräsentation der aktuellen Stellung
+// (wer steht mit welcher Figur wo) — für den Wiederholungs-Vergleich.
+function boardSignature() {
+  return gameState.pieces
+    .map(p => `${p.owner}:${p.id}:${p.anchor[0]},${p.anchor[1]}`)
+    .sort()
+    .join('|');
+}
+
+// Entfernt den äußersten Ring des Feldes (rundherum um 1 Feld kleiner),
+// schlägt dabei alle Figuren, die auf einem wegfallenden Feld stehen, und
+// rückt die restlichen Figuren auf das neue, kleinere Koordinatensystem ein.
+// Schrumpft nur bis MIN_BOARD_SIZE, danach ohne Wirkung.
+function shrinkBoard(reason) {
+  if (boardSize <= MIN_BOARD_SIZE) return;
+  const n = boardSize;
+  const captured = gameState.pieces.filter(p =>
+    pieceCellsG(p).some(([r,c]) => r===0 || r===n-1 || c===0 || c===n-1)
+  );
+  gameState.pieces = gameState.pieces.filter(p => !captured.includes(p));
+  gameState.pieces.forEach(p => { p.anchor = [p.anchor[0]-1, p.anchor[1]-1]; });
+  boardSize = n - 2;
+  const capturedText = captured.length
+    ? ` (${captured.length} Figur${captured.length>1?'en':''} dabei geschlagen)`
+    : '';
+  showToast(`🌀 ${reason} — das Spielfeld schrumpft auf ${boardSize}×${boardSize}${capturedText}!`);
+}
+
+// Am Ende jeder Runde (nachdem beide Seiten gezogen haben) aufgerufen:
+// prüft Wiederholung und Marathon-Schwelle und schrumpft ggf. das Feld.
+function handleRoundEnd() {
+  const sig = boardSignature();
+  const isRepeat = positionHistory.includes(sig);
+  positionHistory.push(sig);
+  if (isRepeat) shrinkBoard('Die Stellung hat sich wiederholt');
+
+  if (roundNum > MARATHON_ROUND_THRESHOLD && (roundNum - MARATHON_ROUND_THRESHOLD) % 2 === 0) {
+    shrinkBoard('Die Schlacht dauert schon sehr lange');
+  }
+}
 
 function updateTurnUI() {
   const dot = document.getElementById('turn-dot');
@@ -1759,7 +1929,10 @@ function checkGameOver() {
     if (!gameOverHandled) {
       gameOverHandled = true;
       saveData.stats.gamesPlayed += 1;
-      if (enemyLost) { saveData.stats.wins += 1; showToast(`👑 ${kingDisplayName('enemy')} des Gegners ist gefallen — du hast gewonnen!`); }
+      // Ein Feld-Schrumpfen kann ausnahmsweise beide Könige gleichzeitig schlagen
+      // (z.B. wenn beide im äußeren Ring stehen) — das zählt als Unentschieden.
+      if (playerLost && enemyLost) { saveData.stats.draws += 1; showToast('🌀 Beide Cultwesen sind gleichzeitig gefallen — Unentschieden!'); }
+      else if (enemyLost) { saveData.stats.wins += 1; showToast(`👑 ${kingDisplayName('enemy')} des Gegners ist gefallen — du hast gewonnen!`); }
       else { saveData.stats.losses += 1; showToast(`💀 Dein ${kingDisplayName('player')} ist gefallen — du hast verloren!`); }
       saveSave();
       renderStats();
@@ -1780,6 +1953,8 @@ function endTurn() {
   } else {
     currentTurn = 'player';
     roundNum++;
+    handleRoundEnd();
+    if (checkGameOver()) { renderBoard(); return; }
     updateTurnUI();
     renderBoard();
   }
@@ -1998,7 +2173,7 @@ function mpRole(role) {
 function hostSelectSize(el, s) {
   el.closest('.badges').querySelectorAll('.badge').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  boardSize = parseInt(s);
+  selectedBoardSize = boardSize = parseInt(s);
 }
 
 function hostLineupDone() {
@@ -2028,14 +2203,19 @@ let senderQrInstance = null;
 // Nutzt die aktuelle Platzierung aus der normalen Aufstellungsphase (placeFig etc.)
 function buildLineupPayload() {
   const kingOwned = saveData.collection[9] || {};
+  const kingTier = KING_TITLE_TIERS.find(t => t.title === kingOwned.title);
+  // Figuren als flaches Zahlen-Array (id,row,col,...) statt Objekten kodieren —
+  // das hält den QR-Code bei voll bestücktem Feld noch in einem gut scanbaren
+  // Versionsbereich (siehe Test in showSenderQR-Kommentar unten).
+  const flatPieces = [];
+  pieces.filter(p => p.owner === 'player').forEach(p => {
+    flatPieces.push(p.id, p.anchor[0], p.anchor[1]);
+  });
   return {
     type: 'figurkampf-lineup',
     boardSize: boardSize,
-    kingTitle: kingOwned.title || null,
-    kingEmoji: kingOwned.emoji || null,
-    pieces: pieces.filter(p => p.owner === 'player').map(p => ({
-      id: p.id, anchor: p.anchor
-    }))
+    kingStage: kingTier ? kingTier.stage : null,
+    pieces: flatPieces
   };
 }
 
@@ -2056,8 +2236,8 @@ function showSenderQR() {
   try {
     senderQrInstance = new QRCode(canvas, {
       text: json,
-      width: 220,
-      height: 220,
+      width: 280,
+      height: 280,
       correctLevel: QRCode.CorrectLevel.M
     });
   } catch(e) {
@@ -2181,14 +2361,17 @@ function handleScannedLineup(raw, statusEl) {
 
   // Gegnerische Aufstellung (vom Sender) in die eigene Platzierung übernehmen.
   // Eigene Figuren bleiben unten, gegnerische werden oben gespiegelt platziert.
-  remoteEnemyKingTitle = data.kingTitle || null;
+  const kingTier = KING_TITLE_TIERS.find(t => t.stage === data.kingStage) || null;
+  remoteEnemyKingTitle = kingTier ? kingTier.title : null;
   let unknownCount = 0;
-  const enemyPieces = data.pieces.map(p => {
-    const fig = FIGURES_CATALOG.find(f => f.id === p.id);
-    if (!fig) { unknownCount++; return null; }
-    const emoji = (fig.isKing && data.kingEmoji) ? data.kingEmoji : fig.emoji;
-    return { owner:'enemy', id: fig.id, emoji, anchor: mirrorAnchorForEnemy(p.anchor, data.boardSize) };
-  }).filter(Boolean);
+  const enemyPieces = [];
+  for (let i = 0; i < data.pieces.length; i += 3) {
+    const id = data.pieces[i], r = data.pieces[i+1], c = data.pieces[i+2];
+    const fig = FIGURES_CATALOG.find(f => f.id === id);
+    if (!fig) { unknownCount++; continue; }
+    const emoji = (fig.isKing && kingTier) ? kingTier.emoji : fig.emoji;
+    enemyPieces.push({ owner:'enemy', id: fig.id, emoji, anchor: mirrorAnchorForEnemy([r,c], data.boardSize) });
+  }
 
   if (unknownCount > 0) {
     // Der Sender hat z.B. eine eigene, über das Admin-Tool erzeugte Figur benutzt,
@@ -2241,6 +2424,7 @@ function launchGameFromExistingPlacement() {
   roundNum = 1;
   gameOverHandled = false;
   isLocalMultiplayer = true;
+  positionHistory = [];
   pieces.filter(p=>p.owner==='player').forEach(p => {
     if (saveData.collection[p.id]) saveData.collection[p.id].uses += 1;
   });
