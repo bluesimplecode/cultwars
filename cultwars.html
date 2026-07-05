@@ -1017,6 +1017,10 @@ function defaultSaveData() {
     collection: {
       9: { owned:true, kills:0, uses:0, isNew:false },
     },
+    // Selbst erstellte / per NFC gescannte Figuren, die nicht im fest
+    // eingebauten FIGURES_CATALOG stehen. Müssen hier mitgespeichert werden,
+    // sonst verschwinden sie nach einem Reload oder Save-Import wieder.
+    customFigures: [],
     stats: { gamesPlayed:0, wins:0, losses:0, draws:0 }
   };
 }
@@ -1028,6 +1032,7 @@ function loadSave() {
     const data = JSON.parse(raw);
     // Fallback-Werte falls Struktur unvollständig ist (z.B. nach App-Update)
     if (!data.collection) data.collection = {};
+    if (!data.customFigures) data.customFigures = [];
     if (!data.stats) data.stats = { gamesPlayed:0, wins:0, losses:0, draws:0 };
     if (data.stats.draws == null) data.stats.draws = 0;
     return data;
@@ -1035,6 +1040,17 @@ function loadSave() {
     console.warn('Speicherstand konnte nicht gelesen werden, starte neu.', e);
     return defaultSaveData();
   }
+}
+
+// Trägt die im Speicherstand mitgeführten eigenen Figuren in den Katalog
+// ein, damit sie nach Laden/Import wieder auftauchen (siehe customFigures
+// in defaultSaveData).
+function mergeCustomFiguresIntoCatalog() {
+  saveData.customFigures.forEach(fig => {
+    if (!FIGURES_CATALOG.find(f => f.id === fig.id)) {
+      FIGURES_CATALOG.push(fig);
+    }
+  });
 }
 
 function saveSave() {
@@ -1046,6 +1062,7 @@ function saveSave() {
 }
 
 let saveData = loadSave();
+mergeCustomFiguresIntoCatalog();
 
 // Speicherstand (Sammlung + Statistiken) als Datei herunterladen.
 function exportSaveData() {
@@ -1081,7 +1098,9 @@ function importSaveDataFile(input) {
       return;
     }
     if (!confirm('Aktuellen Speicherstand wirklich mit der importierten Datei überschreiben?')) return;
+    if (!data.customFigures) data.customFigures = []; // ältere Exporte kannten dieses Feld noch nicht
     saveData = data;
+    mergeCustomFiguresIntoCatalog();
     saveSave();
     rebuildFigures();
     renderCollection();
@@ -1535,6 +1554,9 @@ function ingestScannedFigure(data) {
       isKing: !!data.isKing,
     };
     FIGURES_CATALOG.push(fig);
+    // Muss im Speicherstand mitgeführt werden, sonst geht die Figur beim
+    // nächsten Laden/Export verloren (FIGURES_CATALOG ist nur Laufzeitzustand).
+    saveData.customFigures.push(fig);
   }
   addFigureToCollection(fig.id);
   renderCollection();
