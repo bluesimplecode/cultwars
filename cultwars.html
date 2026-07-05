@@ -440,18 +440,113 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     --surface2: #1a1a2e;
     --accent: #7c3aed;
     --accent2: #a855f7;
+    --accent-rgb: 124,58,237;
+    --player-rgb: 124,58,237;
     --gold: #f59e0b;
     --text: #f1f5f9;
     --text2: #94a3b8;
     --text3: #64748b;
-    --border: rgba(124,58,237,0.25);
+    --border: rgba(var(--accent-rgb),0.25);
     --green: #10b981;
     --red: #ef4444;
+    --header-grad-top: #16073a;
+    --nfc-grad-1: #2d1660;
+    --nfc-grad-2: #1a0940;
     --cell: 38px;
     --r: 12px;
   }
+
+  /* ---------------------------------------------------------------
+     OKKULTE ESKALATION: Je mehr Figuren gesammelt sind, desto düsterer
+     wird die App. Die Stufe (0-3) wird aus ownedFigures().length berechnet
+     und als data-corruption auf <body> gesetzt — alle Farben oben sind
+     CSS-Variablen, damit die Verfärbung ohne Duplikate überall greift.
+     --------------------------------------------------------------- */
+  body[data-corruption="1"] {
+    --bg: #08060d;
+    --header-grad-top: #200a3d;
+    --nfc-grad-1: #2a0f4a;
+    --nfc-grad-2: #170733;
+    --accent: #6d28d9;
+    --accent2: #9333ea;
+    --accent-rgb: 109,40,217;
+    --player-rgb: 139,92,246;
+    --gold: #d97706;
+  }
+  body[data-corruption="2"] {
+    --bg: #050308;
+    --surface: #0d0710;
+    --surface2: #150a1a;
+    --header-grad-top: #2c0b1a;
+    --nfc-grad-1: #3a0f1a;
+    --nfc-grad-2: #1a0508;
+    --accent: #7f1d1d;
+    --accent2: #c0392b;
+    --accent-rgb: 192,57,43;
+    --player-rgb: 168,85,247;
+    --border: rgba(185,28,28,0.32);
+    --gold: #92400e;
+    --text2: #a89aa0;
+  }
+  body[data-corruption="3"] {
+    --bg: #020103;
+    --surface: #0a0508;
+    --surface2: #12080c;
+    --header-grad-top: #300609;
+    --nfc-grad-1: #400a0f;
+    --nfc-grad-2: #150204;
+    --accent: #450a0a;
+    --accent2: #dc2626;
+    --accent-rgb: 220,38,38;
+    --player-rgb: 192,38,211;
+    --border: rgba(220,38,38,0.4);
+    --gold: #78350f;
+    --text: #e7d9d9;
+    --text2: #9c8a8a;
+    --text3: #6b5858;
+  }
+
+  /* Vignette wird mit steigender Korruption dunkler und beginnt leicht zu flackern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 250;
+    background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%);
+    opacity: 0;
+    transition: opacity 2.5s ease, background 2.5s ease;
+  }
+  body[data-corruption="1"]::before { opacity: 0.32; }
+  body[data-corruption="2"]::before {
+    opacity: 0.5;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(20,0,5,0.65) 100%);
+  }
+  body[data-corruption="3"]::before {
+    opacity: 0.75;
+    background: radial-gradient(ellipse at center, transparent 22%, rgba(15,0,3,0.85) 100%);
+    animation: occultFlicker 5s ease-in-out infinite;
+  }
+  @keyframes occultFlicker {
+    0%, 45%, 100% { opacity: 0.75; }
+    47% { opacity: 0.6; }
+    50% { opacity: 0.82; }
+    53% { opacity: 0.65; }
+    55% { opacity: 0.75; }
+  }
+  body[data-corruption="3"] .header h1 {
+    animation: titleFlicker 6s ease-in-out infinite;
+  }
+  @keyframes titleFlicker {
+    0%, 92%, 100% { text-shadow: 0 0 12px rgba(220,38,38,0.5); }
+    94% { text-shadow: 0 0 2px rgba(220,38,38,0.15); }
+    96% { text-shadow: 0 0 18px rgba(220,38,38,0.85); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body[data-corruption]::before, body[data-corruption] .header h1 { animation: none !important; }
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; transition: background 2.5s ease, color 2.5s ease; }
 
   /* Nav */
   .nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
@@ -464,7 +559,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .page.active { display: block; }
 
   /* Header */
-  .header { padding: 52px 16px 16px; background: linear-gradient(180deg, #16073a 0%, var(--bg) 100%); }
+  .header { padding: 52px 16px 16px; background: linear-gradient(180deg, var(--header-grad-top) 0%, var(--bg) 100%); }
   .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
   .header h1 span { color: var(--accent2); }
   .header p { color: var(--text2); font-size: 13px; margin-top: 4px; }
@@ -474,7 +569,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 10px; }
 
   /* Big NFC button */
-  .nfc-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: linear-gradient(135deg, #2d1660 0%, #1a0940 100%); border: 1.5px solid var(--accent); border-radius: 20px; padding: 32px 24px; margin: 16px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-shadow: 0 0 32px rgba(124,58,237,0.2); }
+  .nfc-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: linear-gradient(135deg, var(--nfc-grad-1) 0%, var(--nfc-grad-2) 100%); border: 1.5px solid var(--accent); border-radius: 20px; padding: 32px 24px; margin: 16px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s, background 2.5s ease; box-shadow: 0 0 32px rgba(var(--accent-rgb),0.2); }
   .nfc-btn:active { transform: scale(0.97); }
   .nfc-btn svg { width: 56px; height: 56px; stroke: var(--accent2); fill: none; stroke-width: 1.5; }
   .nfc-btn span { font-size: 17px; font-weight: 600; color: var(--text); }
@@ -488,7 +583,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .fig-emoji { font-size: 32px; line-height: 1; }
   .fig-name { font-size: 11px; font-weight: 600; text-align: center; color: var(--text); }
   .fig-power { font-size: 10px; color: var(--text3); }
-  .fig-size { position: absolute; bottom: 6px; left: 6px; font-size: 9px; color: var(--accent2); background: rgba(124,58,237,0.15); padding: 2px 5px; border-radius: 4px; }
+  .fig-size { position: absolute; bottom: 6px; left: 6px; font-size: 9px; color: var(--accent2); background: rgba(var(--accent-rgb),0.15); padding: 2px 5px; border-radius: 4px; }
 
   /* König-Hervorhebung: goldener Rahmen + Krone, gut sichtbar gegenüber normalen Figuren */
   .king-glow { border-color: var(--gold) !important; box-shadow: 0 0 0 1px var(--gold), 0 0 10px rgba(245,158,11,0.5) !important; }
@@ -512,12 +607,12 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
   .modal-emoji { font-size: 64px; text-align: center; margin-bottom: 12px; }
   .modal-name { font-size: 22px; font-weight: 700; text-align: center; }
-  .modal-size-badge { display: inline-block; background: rgba(124,58,237,0.2); color: var(--accent2); border: 1px solid var(--accent); font-size: 11px; padding: 3px 10px; border-radius: 20px; margin: 8px auto 16px; display: block; width: fit-content; }
+  .modal-size-badge { display: inline-block; background: rgba(var(--accent-rgb),0.2); color: var(--accent2); border: 1px solid var(--accent); font-size: 11px; padding: 3px 10px; border-radius: 20px; margin: 8px auto 16px; display: block; width: fit-content; }
   .modal-section { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin: 16px 0 8px; }
   .modal-story { font-size: 14px; color: var(--text2); line-height: 1.6; }
   .modal-move { display: grid; grid-template-columns: repeat(5,1fr); gap: 3px; margin: 0 auto; width: fit-content; }
   .move-cell { width: 28px; height: 28px; border-radius: 4px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-  .move-cell.can { background: rgba(124,58,237,0.3); }
+  .move-cell.can { background: rgba(var(--accent-rgb),0.3); }
   .move-cell.self { background: var(--accent); }
   .close-btn { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: var(--r); color: #fff; font-size: 15px; font-weight: 600; margin-top: 20px; cursor: pointer; }
 
@@ -534,14 +629,14 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .board-cell { width: var(--cell); height: var(--cell); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.1s; box-sizing: border-box; }
   .board-cell.light { background: #1e1b2e; }
   .board-cell.dark { background: #0f0d1a; }
-  .board-cell.selected { background: rgba(124,58,237,0.4) !important; }
+  .board-cell.selected { background: rgba(var(--accent-rgb),0.4) !important; }
   .board-cell.movable { background: rgba(16,185,129,0.25) !important; position: relative; }
   .board-cell.movable::after { content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%; background: rgba(16,185,129,0.7); }
   .board-cell.enemy-sel { background: rgba(239,68,68,0.25) !important; }
   .piece-overlay { position: absolute; display: flex; align-items: center; justify-content: center; pointer-events: none; border-radius: 4px; box-sizing: border-box; }
-  .piece-overlay.player { outline: 2px solid rgba(124,58,237,0.7); background: rgba(124,58,237,0.08); }
+  .piece-overlay.player { outline: 2px solid rgba(var(--player-rgb),0.7); background: rgba(var(--player-rgb),0.08); }
   .piece-overlay.enemy  { outline: 2px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.06); }
-  .piece-overlay.sel    { outline: 2px solid var(--accent2) !important; background: rgba(124,58,237,0.22) !important; }
+  .piece-overlay.sel    { outline: 2px solid var(--accent2) !important; background: rgba(var(--accent-rgb),0.22) !important; }
   .player-tag { display: flex; align-items: center; gap: 8px; padding: 10px 16px; }
   .player-dot { width: 10px; height: 10px; border-radius: 50%; }
   .turn-info { text-align: center; font-size: 13px; color: var(--text2); padding: 8px 16px; }
@@ -569,14 +664,14 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .badges { display: flex; gap: 8px; padding: 0 16px; overflow-x: auto; margin-bottom: 12px; scrollbar-width: none; }
   .badges::-webkit-scrollbar { display: none; }
   .badge { flex-shrink: 0; padding: 5px 12px; border-radius: 20px; font-size: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text2); cursor: pointer; white-space: nowrap; }
-  .badge.active { background: rgba(124,58,237,0.2); border-color: var(--accent2); color: var(--accent2); }
+  .badge.active { background: rgba(var(--accent-rgb),0.2); border-color: var(--accent2); color: var(--accent2); }
 
   .board-cell.place-zone { background: rgba(16,185,129,0.12) !important; cursor: pointer; }
   .board-cell.place-zone:active { background: rgba(16,185,129,0.3) !important; }
   .board-cell.place-target { background: rgba(16,185,129,0.35) !important; }
   .board-cell.placed { }
   .hand-fig { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; transition:border-color 0.1s; min-width:56px; position:relative; }
-  .hand-fig.selected { border-color:var(--accent2); background:rgba(124,58,237,0.15); }
+  .hand-fig.selected { border-color:var(--accent2); background:rgba(var(--accent-rgb),0.15); }
   .hand-fig.used { opacity:0.35; pointer-events:none; }
   .hand-fig .hf-emoji { font-size:26px; }
   .hand-fig .hf-name { font-size:9px; color:var(--text2); text-align:center; max-width:52px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -660,7 +755,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 
   <!-- Placement phase -->
   <div id="placement-phase" style="display:none;">
-    <div style="padding: 52px 16px 10px; background: linear-gradient(180deg, #16073a 0%, var(--bg) 100%);">
+    <div style="padding: 52px 16px 10px; background: linear-gradient(180deg, var(--header-grad-top) 0%, var(--bg) 100%);">
       <div style="font-size:20px; font-weight:700;">Aufstellung <span style="color:var(--accent2);">wählen</span></div>
       <div style="font-size:12px; color:var(--text2); margin-top:4px;">Platziere deine Figuren in den unteren 3 Reihen</div>
     </div>
@@ -948,7 +1043,29 @@ function rebuildFigures() {
     const emoji = owned.emoji || f.emoji;
     return { ...f, emoji, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned };
   });
+  applyCorruptionTheme();
 }
+
+// ---------------------------------------------------------------
+// OKKULTE ESKALATION
+// Am Anfang ist die App schlicht dunkel. Mit jeder zusätzlich gescannten
+// Figur (über den Werksstand aus defaultSaveData() hinaus) wird das Theme
+// düsterer — siehe die body[data-corruption] CSS-Regeln weiter oben.
+// ---------------------------------------------------------------
+const STARTER_OWNED_COUNT = Object.keys(defaultSaveData().collection).length;
+
+function corruptionStage() {
+  const extra = Math.max(0, ownedFigures().length - STARTER_OWNED_COUNT);
+  if (extra >= 5) return 3;
+  if (extra >= 3) return 2;
+  if (extra >= 1) return 1;
+  return 0;
+}
+
+function applyCorruptionTheme() {
+  document.body.dataset.corruption = corruptionStage();
+}
+
 rebuildFigures();
 
 // Eine Figur als gesammelt markieren (z.B. nach NFC-Scan)

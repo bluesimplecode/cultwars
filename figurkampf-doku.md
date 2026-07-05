@@ -11,6 +11,7 @@
 - Beim ersten Öffnen einer neu gescannten Figur verschwindet der NEU-Badge
 - Jeder Spieler besitzt zwingend einen König: das **Höchste Cultwesen** (Katalog-ID 9) — von Anfang an freigeschaltet, muss nie per NFC gefunden werden, deutlich hervorgehoben (Sammlung, Kodex, Auswahl, Spielbrett)
 - Emoji des höchsten Cultwesens ist spielerseitig frei wählbar (Figur-Detailansicht, kein Admin-Tool nötig) — Auswahl aus thematischer Palette oder eigenes Emoji, Name und Bewegungsmuster (identisch zur "König"-Vorlage) bleiben fix
+- Das Design wird mit dem Sammelfortschritt zunehmend okkult und düster (siehe eigener Abschnitt unten)
 
 **Spielen — Solo**
 - Spielfeldgröße wählen (6×6, 8×8, 10×10)
@@ -50,6 +51,21 @@
 - **Zwei Dateien:** `cultwars.html` (Spiel) und `figuren-admin.html` (Generator); beide eigenständig
 - **Selbstenthalten:** QR-Bibliotheken sind eingebettet (kein CDN-Aufruf zur Laufzeit nötig)
 - **Datenmenge NFC-Tag:** Eine Figur ≈ 280 Bytes → NTAG215 (504 B) mindestens; NTAG216 (888 B) empfohlen. Eine Aufstellung ≈ 260–475 Bytes → QR-Code ausreichend
+
+---
+
+## Okkulte Design-Eskalation
+
+Die App startet als schlichtes Dark-Theme. Mit jeder zusätzlich gescannten Figur (über den Werksstand aus `defaultSaveData()` hinaus, aktuell 4 Figuren: König + 3 Test-Figuren) wird das Erscheinungsbild düsterer. Die Stufe wird bei jedem `rebuildFigures()`-Aufruf aus `ownedFigures().length` neu berechnet und als `data-corruption`-Attribut auf `<body>` gesetzt:
+
+| Stufe | Zusätzlich gesammelte Figuren | Optik |
+|---|---|---|
+| 0 | 0 (Werkszustand) | normales lila Dark-Theme, keine Effekte |
+| 1 | 1–2 | Hintergrund leicht dunkler, Akzentfarbe verblasst Richtung gedecktes Violett, dezente Vignette |
+| 2 | 3–4 | Farbschema kippt zu Blutrot, stärkere Vignette |
+| 3 | 5+ | nahezu schwarzer Hintergrund, intensive rote Vignette mit leichtem Flackern, Titel pulsiert |
+
+Alle Farbwerte sind CSS-Variablen (`--bg`, `--accent`, `--accent-rgb`, `--gold`, `--border`, `--header-grad-top`, `--nfc-grad-1/2`, …), die pro Stufe über `body[data-corruption="N"]`-Selektoren überschrieben werden — Komponenten müssen dafür nicht einzeln angepasst werden. Eine Ausnahme ist `--player-rgb`: die Farbe der eigenen Spielfiguren auf dem Brett ist bewusst von der allgemeinen Akzentfarbe entkoppelt (bleibt violett/magenta), damit sie bei hoher Korruptionsstufe nicht mit der (fest roten) Gegnerfarbe verschmilzt. Animationen respektieren `prefers-reduced-motion`.
 
 ---
 
@@ -96,6 +112,8 @@
 | Höchstes Cultwesen (König, Katalog-ID 9) fest im Katalog, für jeden Spieler von Anfang an freigeschaltet | ✅ |
 | Emoji des höchsten Cultwesens spielerseitig wählbar (Figur-Detailansicht, Override in `saveData` gespeichert) | ✅ |
 | App umbenannt: `figuren-spiel.html` → `cultwars.html`, Seitentitel "Cultwars", Kodex-Überschrift "Cultwesenkodex" | ✅ |
+| Okkulte Design-Eskalation: Theme wird mit jeder zusätzlich gesammelten Figur düsterer (4 Stufen, `body[data-corruption]`) | ✅ |
+| Spieler-/Gegner-Figuren auf dem Brett bleiben auch bei maximaler Korruption farblich unterscheidbar (separate `--player-rgb`) | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
