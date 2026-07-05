@@ -580,7 +580,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .close-btn { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: var(--r); color: #fff; font-size: 15px; font-weight: 600; margin-top: 20px; cursor: pointer; }
 
   /* Titel-Freischaltungen für das höchste Cultwesen (einzige Anpassungsmöglichkeit) */
-  .king-title-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-height: 220px; overflow-y: auto; }
+  .king-title-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
   .ktier { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
   .ktier.locked { opacity: 0.4; cursor: default; }
   .ktier.sel { border-color: var(--gold); background: rgba(245,158,11,0.15); }
@@ -808,7 +808,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 
     <div id="m-king-emoji-block" style="display:none;">
       <div class="modal-section">🏆 Titel (<span id="king-title-progress"></span>)</div>
-      <p style="font-size:11px; color:var(--text3); margin-bottom:8px;">Name und Emoji des höchsten Cultwesens ändern sich nur durch freigeschaltete Titel — je mehr Figuren du sammelst, desto mehr schalten sich frei.</p>
+      <p style="font-size:11px; color:var(--text3); margin-bottom:8px;">Name und Emoji des Cultwesens ändern sich nur durch freigeschaltete Titel — je mehr Figuren du sammelst, desto mehr schalten sich frei.</p>
       <div class="king-title-list" id="king-title-list"></div>
     </div>
 
@@ -939,8 +939,8 @@ const FIGURES_CATALOG = [
   { id:8, name:'Sternenelf', emoji:'🧝', size:4, moveMode:'jump',
     story:'Hüter der Himmelskarten. Sieht die Zukunft in Sternkonstellationen.',
     move:[[0,0,1,0,0],[0,1,1,1,0],[1,1,2,1,1],[0,1,1,1,0],[0,0,1,0,0]] },
-  { id:9, name:'Höchstes Cultwesen', emoji:'👑', size:1, moveMode:'jump', isKing:true,
-    story:'Das höchste Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt es, zerfällt die gesamte Ordnung.',
+  { id:9, name:'Cultwesen', emoji:'👑', size:1, moveMode:'jump', isKing:true,
+    story:'Das Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt es, zerfällt die gesamte Ordnung.',
     move:[[0,0,0,0,0],[0,1,1,1,0],[0,1,2,1,0],[0,1,1,1,0],[0,0,0,0,0]] },
 ];
 
@@ -1039,7 +1039,7 @@ const MAX_CORRUPTION_STAGE = 33;
 // Titel-Stufen für das höchste Cultwesen: schaltet mit steigender Sammlung
 // neue Titel+Emoji-Kombinationen frei, die der Spieler auswählen kann.
 const KING_TITLE_TIERS = [
-  { stage:1,  title:'Gewöhnliches',     emoji:'👁' },
+  { stage:1,  title:'Gewöhnliches',     emoji:'👁️' },
   { stage:2,  title:'Geheimnisvolles',  emoji:'🌙' },
   { stage:3,  title:'Verspieltes',      emoji:'♟' },
   { stage:5,  title:'Verdorbenes',      emoji:'🖤' },
@@ -1054,6 +1054,11 @@ const KING_TITLE_TIERS = [
   { stage:30, title:'Heißes',           emoji:'🔥' },
   { stage:33, title:'Allmächtiges',     emoji:'🧿' },
 ];
+
+// Titel + Emoji, das der computergesteuerte Gegner (Solo gegen die KI)
+// immer trägt — unabhängig von eigenen Titel-Freischaltungen.
+const AI_KING_TITLE = 'Simuliertes';
+const AI_KING_EMOJI = '🤖';
 
 // Ankerpunkte für die Farb-Interpolation (stage = zusätzlich gesammelte
 // Figuren). Zwischen zwei Ankerpunkten wird linear interpoliert, damit
@@ -1148,6 +1153,25 @@ function ownedFigures() {
 function isKingId(id) {
   const f = FIGURES_CATALOG.find(x => x.id === id);
   return !!(f && f.isKing);
+}
+
+// Titel des gegnerischen Cultwesens, sofern er per QR-Code vom Sender
+// übermittelt wurde (siehe buildLineupPayload/handleScannedLineup). Wird bei
+// jedem Empfang einer Aufstellung neu gesetzt, gilt nur für Nachrichten.
+let remoteEnemyKingTitle = null;
+
+// Liefert den anzuzeigenden Namen (Titel + Cultwesen) für Nachrichten.
+// owner 'player' = das eigene Cultwesen, 'enemy' = das des Gegenübers —
+// bei Solo gegen die KI immer "Simuliertes Cultwesen", bei echtem
+// Multiplayer der vom Sender übermittelte Titel (falls vorhanden).
+function kingDisplayName(owner) {
+  const baseName = (FIGURES_CATALOG.find(f => f.isKing) || {}).name || 'Cultwesen';
+  if (owner === 'player') {
+    const f = FIGURES.find(x => x.isKing);
+    return f ? f.name : baseName;
+  }
+  if (!isLocalMultiplayer) return `${AI_KING_TITLE} ${baseName}`;
+  return remoteEnemyKingTitle ? `${remoteEnemyKingTitle} ${baseName}` : baseName;
 }
 
 // Prüft während der Platzierungsphase, ob der Spieler seinen König
@@ -1545,7 +1569,7 @@ function launchGame() {
     enemyRoster.forEach(f => {
       const span = figSpan(f);
       if (ec+span <= boardSize) {
-        pieces.push({ owner:'enemy', id:f.id, emoji:f.emoji, anchor:[0,ec] });
+        pieces.push({ owner:'enemy', id:f.id, emoji: f.isKing ? AI_KING_EMOJI : f.emoji, anchor:[0,ec] });
         ec += span+1;
       }
     });
@@ -1558,7 +1582,7 @@ function launchGame() {
 // Sender hat seine Aufstellung fertig → weiter zum Multiplayer-Modal mit QR-Code
 function continueAsSenderAfterPlacement() {
   if (!pieces.some(p=>p.owner==='player')) { showToast('Platziere zuerst mindestens eine Figur!'); return; }
-  if (!hasPlacedKing()) { showToast('👑 Platziere zuerst deinen König!'); return; }
+  if (!hasPlacedKing()) { showToast(`👑 Platziere zuerst dein ${kingDisplayName('player')}!`); return; }
   document.getElementById('placement-phase').style.display = 'none';
   document.getElementById('mp-modal').classList.add('open');
   document.getElementById('mp-role-select').style.display = 'none';
@@ -1671,7 +1695,7 @@ function removePlacedFig(id) {
 
 function startBattle() {
   if (!pieces.some(p=>p.owner==='player')) { showToast('Platziere zuerst mindestens eine Figur!'); return; }
-  if (!hasPlacedKing()) { showToast('👑 Platziere zuerst deinen König!'); return; }
+  if (!hasPlacedKing()) { showToast(`👑 Platziere zuerst dein ${kingDisplayName('player')}!`); return; }
   document.getElementById('placement-phase').style.display = 'none';
   document.getElementById('game-board').style.display = 'block';
   gameState = { pieces: pieces.map(p=>({...p, anchor:[...p.anchor]})) };
@@ -1735,8 +1759,8 @@ function checkGameOver() {
     if (!gameOverHandled) {
       gameOverHandled = true;
       saveData.stats.gamesPlayed += 1;
-      if (enemyLost) { saveData.stats.wins += 1; showToast('👑 Der gegnerische König ist gefallen — du hast gewonnen!'); }
-      else { saveData.stats.losses += 1; showToast('💀 Dein König ist gefallen — du hast verloren!'); }
+      if (enemyLost) { saveData.stats.wins += 1; showToast(`👑 ${kingDisplayName('enemy')} des Gegners ist gefallen — du hast gewonnen!`); }
+      else { saveData.stats.losses += 1; showToast(`💀 Dein ${kingDisplayName('player')} ist gefallen — du hast verloren!`); }
       saveSave();
       renderStats();
     }
@@ -1988,7 +2012,7 @@ function hostLineupDone() {
 // Host hat seine Aufstellung fertig → weiter zum QR-Scan
 function continueAsHostAfterPlacement() {
   if (!pieces.some(p=>p.owner==='player')) { showToast('Platziere zuerst mindestens eine Figur!'); return; }
-  if (!hasPlacedKing()) { showToast('👑 Platziere zuerst deinen König!'); return; }
+  if (!hasPlacedKing()) { showToast(`👑 Platziere zuerst dein ${kingDisplayName('player')}!`); return; }
   document.getElementById('placement-phase').style.display = 'none';
   document.getElementById('mp-modal').classList.add('open');
   document.getElementById('host-lineup').style.display = 'none';
@@ -2003,9 +2027,12 @@ let senderQrInstance = null;
 // Baut die Aufstellungs-Payload, die als QR-Code kodiert wird.
 // Nutzt die aktuelle Platzierung aus der normalen Aufstellungsphase (placeFig etc.)
 function buildLineupPayload() {
+  const kingOwned = saveData.collection[9] || {};
   return {
     type: 'figurkampf-lineup',
     boardSize: boardSize,
+    kingTitle: kingOwned.title || null,
+    kingEmoji: kingOwned.emoji || null,
     pieces: pieces.filter(p => p.owner === 'player').map(p => ({
       id: p.id, anchor: p.anchor
     }))
@@ -2154,11 +2181,13 @@ function handleScannedLineup(raw, statusEl) {
 
   // Gegnerische Aufstellung (vom Sender) in die eigene Platzierung übernehmen.
   // Eigene Figuren bleiben unten, gegnerische werden oben gespiegelt platziert.
+  remoteEnemyKingTitle = data.kingTitle || null;
   let unknownCount = 0;
   const enemyPieces = data.pieces.map(p => {
     const fig = FIGURES_CATALOG.find(f => f.id === p.id);
     if (!fig) { unknownCount++; return null; }
-    return { owner:'enemy', id: fig.id, emoji: fig.emoji, anchor: mirrorAnchorForEnemy(p.anchor, data.boardSize) };
+    const emoji = (fig.isKing && data.kingEmoji) ? data.kingEmoji : fig.emoji;
+    return { owner:'enemy', id: fig.id, emoji, anchor: mirrorAnchorForEnemy(p.anchor, data.boardSize) };
   }).filter(Boolean);
 
   if (unknownCount > 0) {
@@ -2170,7 +2199,8 @@ function handleScannedLineup(raw, statusEl) {
   if (!enemyPieces.some(p => isKingId(p.id))) {
     // Der König des Senders war unter den unbekannten Figuren — ohne ihn im
     // eigenen Katalog kann der Kampf nicht wie vorgesehen ausgetragen werden.
-    showToast('⚠️ Der König des Senders fehlt in deinem Katalog — Kampf ggf. sofort beendet!');
+    const baseKingName = (FIGURES_CATALOG.find(f => f.isKing) || {}).name || 'Cultwesen';
+    showToast(`⚠️ ${baseKingName} des Senders fehlt in deinem Katalog — Kampf ggf. sofort beendet!`);
   }
 
   pieces = pieces.filter(p => p.owner === 'player').concat(enemyPieces);
