@@ -414,22 +414,39 @@ function writeNFC() {
   writeFigureToTag(fig, document.getElementById('create-status'));
 }
 
+// Baut ein Element mit textContent statt innerHTML — der Name kommt aus einem
+// Freitextfeld und soll nie als HTML interpretiert werden.
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
 function renderLibrary() {
   const list = document.getElementById('fig-library');
   document.getElementById('lib-count').textContent = library.length + ' Figuren';
-  if (library.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:30px;font-size:13px;">Noch keine Figuren gespeichert.</div>'; return; }
-  list.innerHTML = library.map((f,i) => `
-    <div class="fig-item${f.isKing?' king':''}">
-      <div class="fig-item-emoji">${f.emoji}</div>
-      <div class="fig-item-info">
-        <div class="fig-item-name">${f.isKing?'👑 ':''}${f.name}</div>
-        <div class="fig-item-meta">${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${f.moveMode==='slide'?'Gleitet':'Springt'} · ${new Date(f.created).toLocaleDateString('de-DE')}</div>
-      </div>
-      <div class="fig-item-actions">
-        <button class="icon-btn nfc" onclick="writeFromLib(${i})" title="NFC schreiben">📡</button>
-        <button class="icon-btn del" onclick="deleteFig(${i})" title="Löschen">✕</button>
-      </div>
-    </div>`).join('');
+  list.innerHTML = '';
+  if (library.length === 0) { list.appendChild(el('div', '', 'Noch keine Figuren gespeichert.')); list.firstChild.style.cssText = 'text-align:center;color:var(--text3);padding:30px;font-size:13px;'; return; }
+  library.forEach((f,i) => {
+    const item = el('div', 'fig-item' + (f.isKing?' king':''));
+    item.appendChild(el('div', 'fig-item-emoji', f.emoji));
+    const info = el('div', 'fig-item-info');
+    info.appendChild(el('div', 'fig-item-name', (f.isKing?'👑 ':'') + f.name));
+    info.appendChild(el('div', 'fig-item-meta', `${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${f.moveMode==='slide'?'Gleitet':'Springt'} · ${new Date(f.created).toLocaleDateString('de-DE')}`));
+    item.appendChild(info);
+    const actions = el('div', 'fig-item-actions');
+    const nfcBtn = el('button', 'icon-btn nfc', '📡');
+    nfcBtn.title = 'NFC schreiben';
+    nfcBtn.onclick = () => writeFromLib(i);
+    const delBtn = el('button', 'icon-btn del', '✕');
+    delBtn.title = 'Löschen';
+    delBtn.onclick = () => deleteFig(i);
+    actions.appendChild(nfcBtn);
+    actions.appendChild(delBtn);
+    item.appendChild(actions);
+    list.appendChild(item);
+  });
 }
 
 function deleteFig(i) {
@@ -454,7 +471,9 @@ function exportAll() {
 
 function renderNFCSelect() {
   const sel = document.getElementById('nfc-fig-select');
-  sel.innerHTML = '<option value="">— Figur wählen —</option>' + library.map((f,i) => `<option value="${i}">${f.emoji} ${f.name}</option>`).join('');
+  sel.innerHTML = '';
+  sel.appendChild(new Option('— Figur wählen —', ''));
+  library.forEach((f,i) => sel.appendChild(new Option(`${f.emoji} ${f.name}`, i)));
   document.getElementById('nfc-write-btn').disabled = true;
 }
 

@@ -1315,7 +1315,10 @@ function renderCollection() {
   owned.forEach(f => {
     const d = document.createElement('div');
     d.className = 'fig-card' + (f.new ? ' new' : '') + (f.isKing ? ' king-glow' : '');
-    d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name">${f.name}</span><span class="fig-power">${f.kills} Kills</span><span class="fig-size">${sizeLabel(f.size)}</span>`;
+    d.appendChild(el('span', 'fig-emoji', f.emoji));
+    d.appendChild(el('span', 'fig-name', f.name));
+    d.appendChild(el('span', 'fig-power', `${f.kills} Kills`));
+    d.appendChild(el('span', 'fig-size', sizeLabel(f.size)));
     d.onclick = () => { markFigSeen(f.id); openFigModal(f); };
     grid.appendChild(d);
   });
@@ -1338,13 +1341,21 @@ function renderKodex() {
     const d = document.createElement('div');
     if (f.owned) {
       d.className = 'fig-card' + (f.isKing ? ' king-glow' : '');
-      d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name">${f.name}</span><span class="fig-power">${sizeLabel(f.size)}</span><span class="fig-size">${f.kills}⚔️</span>`;
+      d.appendChild(el('span', 'fig-emoji', f.emoji));
+      d.appendChild(el('span', 'fig-name', f.name));
+      d.appendChild(el('span', 'fig-power', sizeLabel(f.size)));
+      d.appendChild(el('span', 'fig-size', `${f.kills}⚔️`));
       d.onclick = () => openFigModal(f);
     } else {
       // Unbekannte Figur: nur Silhouette, keine Details
       d.className = 'fig-card';
       d.style.opacity = '0.4';
-      d.innerHTML = `<span class="fig-emoji" style="filter:grayscale(1) brightness(0.3);">❓</span><span class="fig-name">???</span><span class="fig-power">Nicht gesammelt</span><span class="fig-size">${sizeLabel(f.size)}</span>`;
+      const emojiSpan = el('span', 'fig-emoji', '❓');
+      emojiSpan.style.filter = 'grayscale(1) brightness(0.3)';
+      d.appendChild(emojiSpan);
+      d.appendChild(el('span', 'fig-name', '???'));
+      d.appendChild(el('span', 'fig-power', 'Nicht gesammelt'));
+      d.appendChild(el('span', 'fig-size', sizeLabel(f.size)));
       d.onclick = () => showToast('🔒 Diese Figur wurde noch nicht gescannt.');
     }
     grid.appendChild(d);
@@ -1367,18 +1378,34 @@ function renderStats() {
   }
   const sorted = [...owned].sort((a,b) => b.kills - a.kills);
   const max = Math.max(1, sorted[0].kills);
-  list.innerHTML = sorted.map(f => `
-    <div class="stat-row">
-      <div class="stat-emoji">${f.emoji}</div>
-      <div class="stat-info">
-        <div class="stat-name">${f.name}</div>
-        <div class="stat-nums">${f.kills} Kills · ${f.uses}× gewählt</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(f.kills/max*100)}%"></div></div>
-      </div>
-    </div>`).join('');
+  list.innerHTML = '';
+  sorted.forEach(f => {
+    const row = el('div', 'stat-row');
+    row.appendChild(el('div', 'stat-emoji', f.emoji));
+    const info = el('div', 'stat-info');
+    info.appendChild(el('div', 'stat-name', f.name));
+    info.appendChild(el('div', 'stat-nums', `${f.kills} Kills · ${f.uses}× gewählt`));
+    const track = el('div', 'bar-track');
+    const fill = el('div', 'bar-fill');
+    fill.style.width = `${Math.round(f.kills/max*100)}%`;
+    track.appendChild(fill);
+    info.appendChild(track);
+    row.appendChild(info);
+    list.appendChild(row);
+  });
 }
 
 function sizeLabel(s) { return s===1?'1×1':s===4?'2×2':'3×3'; }
+
+// Baut ein Element mit textContent statt innerHTML — Figurendaten (Name/Emoji/Story)
+// können von externen NFC-Tags oder importierten Speicherständen stammen und
+// dürfen nie ungeprüft als HTML interpretiert werden.
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
 
 function openFigModal(f) {
   currentFig = f;
@@ -1729,7 +1756,9 @@ function renderPlacementHand() {
     const isUsed = placementUsed.has(id);
     const d = document.createElement('div');
     d.className = 'hand-fig'+(isSelected?' selected':'')+(isUsed?' used':'')+(f.isKing?' king-glow':'');
-    d.innerHTML = `<span class="hf-emoji">${f.emoji}</span><span class="hf-name">${f.name}</span><span class="hf-size">${sizeLabel(f.size)}</span>`;
+    d.appendChild(el('span', 'hf-emoji', f.emoji));
+    d.appendChild(el('span', 'hf-name', f.name));
+    d.appendChild(el('span', 'hf-size', sizeLabel(f.size)));
     d.onclick = () => {
       placementSelected = (placementSelected===id) ? null : id;
       renderPlacementHand();
