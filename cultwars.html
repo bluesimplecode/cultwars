@@ -457,84 +457,47 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   }
 
   /* ---------------------------------------------------------------
-     OKKULTE ESKALATION: Je mehr Figuren gesammelt sind, desto düsterer
-     wird die App. Die Stufe (0-3) wird aus ownedFigures().length berechnet
-     und als data-corruption auf <body> gesetzt — alle Farben oben sind
-     CSS-Variablen, damit die Verfärbung ohne Duplikate überall greift.
+     OKKULTE ESKALATION: Startet als schlichtes Dark-Theme. Mit jeder
+     zusätzlich gesammelten Figur (bis Stufe 33) verschiebt applyCorruptionTheme()
+     die Farb-Variablen oben kontinuierlich per Inline-Style auf <body> —
+     hier stehen nur noch die Effekte, die auf den gesetzten Variablen aufbauen.
      --------------------------------------------------------------- */
-  body[data-corruption="1"] {
-    --bg: #08060d;
-    --header-grad-top: #200a3d;
-    --nfc-grad-1: #2a0f4a;
-    --nfc-grad-2: #170733;
-    --accent: #6d28d9;
-    --accent2: #9333ea;
-    --accent-rgb: 109,40,217;
-    --player-rgb: 139,92,246;
-    --gold: #d97706;
+  #bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: url('bg.png') center/cover no-repeat fixed;
+    filter: grayscale(1) contrast(1.6);
+    opacity: var(--bg-image-opacity, 0);
+    transition: opacity 2.5s ease;
+    pointer-events: none;
   }
-  body[data-corruption="2"] {
-    --bg: #050308;
-    --surface: #0d0710;
-    --surface2: #150a1a;
-    --header-grad-top: #2c0b1a;
-    --nfc-grad-1: #3a0f1a;
-    --nfc-grad-2: #1a0508;
-    --accent: #7f1d1d;
-    --accent2: #c0392b;
-    --accent-rgb: 192,57,43;
-    --player-rgb: 168,85,247;
-    --border: rgba(185,28,28,0.32);
-    --gold: #92400e;
-    --text2: #a89aa0;
-  }
-  body[data-corruption="3"] {
-    --bg: #020103;
-    --surface: #0a0508;
-    --surface2: #12080c;
-    --header-grad-top: #300609;
-    --nfc-grad-1: #400a0f;
-    --nfc-grad-2: #150204;
-    --accent: #450a0a;
-    --accent2: #dc2626;
-    --accent-rgb: 220,38,38;
-    --player-rgb: 192,38,211;
-    --border: rgba(220,38,38,0.4);
-    --gold: #78350f;
-    --text: #e7d9d9;
-    --text2: #9c8a8a;
-    --text3: #6b5858;
+  #bg-layer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #dc2626;
+    mix-blend-mode: multiply;
   }
 
-  /* Vignette wird mit steigender Korruption dunkler und beginnt leicht zu flackern */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     pointer-events: none;
     z-index: 250;
-    background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%);
-    opacity: 0;
-    transition: opacity 2.5s ease, background 2.5s ease;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(10,0,3,0.85) 100%);
+    opacity: var(--vignette-opacity, 0);
+    transition: opacity 2.5s ease;
   }
-  body[data-corruption="1"]::before { opacity: 0.32; }
-  body[data-corruption="2"]::before {
-    opacity: 0.5;
-    background: radial-gradient(ellipse at center, transparent 30%, rgba(20,0,5,0.65) 100%);
-  }
-  body[data-corruption="3"]::before {
-    opacity: 0.75;
-    background: radial-gradient(ellipse at center, transparent 22%, rgba(15,0,3,0.85) 100%);
-    animation: occultFlicker 5s ease-in-out infinite;
-  }
+  body.deep-corruption::before { animation: occultFlicker 5s ease-in-out infinite; }
   @keyframes occultFlicker {
-    0%, 45%, 100% { opacity: 0.75; }
-    47% { opacity: 0.6; }
-    50% { opacity: 0.82; }
-    53% { opacity: 0.65; }
-    55% { opacity: 0.75; }
+    0%, 45%, 100% { opacity: var(--vignette-opacity, 0); }
+    47% { opacity: calc(var(--vignette-opacity, 0) * 0.8); }
+    50% { opacity: calc(var(--vignette-opacity, 0) * 1.1); }
+    53% { opacity: calc(var(--vignette-opacity, 0) * 0.85); }
   }
-  body[data-corruption="3"] .header h1 {
+  body.deep-corruption .header h1 {
     animation: titleFlicker 6s ease-in-out infinite;
   }
   @keyframes titleFlicker {
@@ -543,10 +506,10 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     96% { text-shadow: 0 0 18px rgba(220,38,38,0.85); }
   }
   @media (prefers-reduced-motion: reduce) {
-    body[data-corruption]::before, body[data-corruption] .header h1 { animation: none !important; }
+    body::before, body .header h1 { animation: none !important; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; transition: background 2.5s ease, color 2.5s ease; }
+  body { position: relative; background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; transition: background 2.5s ease, color 2.5s ease; }
 
   /* Nav */
   .nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
@@ -616,11 +579,13 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .move-cell.self { background: var(--accent); }
   .close-btn { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: var(--r); color: #fff; font-size: 15px; font-weight: 600; margin-top: 20px; cursor: pointer; }
 
-  /* Emoji-Auswahl für das höchste Cultwesen (spielerseitig, kein Admin-Tool nötig) */
-  .king-emoji-pick { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 4px; }
-  .kep { aspect-ratio: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; }
-  .kep.sel { border-color: var(--gold); background: rgba(245,158,11,0.15); }
-  .king-emoji-custom { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px; margin-top: 8px; text-align: center; }
+  /* Titel-Freischaltungen für das höchste Cultwesen (einzige Anpassungsmöglichkeit) */
+  .king-title-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-height: 220px; overflow-y: auto; }
+  .ktier { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
+  .ktier.locked { opacity: 0.4; cursor: default; }
+  .ktier.sel { border-color: var(--gold); background: rgba(245,158,11,0.15); }
+  .ktier .kt-emoji { font-size: 17px; width: 22px; text-align: center; }
+  .ktier .kt-stage { margin-left: auto; font-size: 10px; color: var(--text3); }
 
   /* Game board */
   .board-wrap { overflow-x: auto; padding: 16px; display: flex; justify-content: center; }
@@ -687,6 +652,8 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 </style>
 </head>
 <body>
+
+<div id="bg-layer"></div>
 
 <!-- Pages -->
 <div class="page active" id="page-sammeln">
@@ -844,9 +811,9 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     <div class="modal-size-badge" id="m-size"></div>
 
     <div id="m-king-emoji-block" style="display:none;">
-      <div class="modal-section">👑 Emoji des höchsten Cultwesens</div>
-      <div class="king-emoji-pick" id="king-emoji-pick"></div>
-      <input type="text" id="king-emoji-custom" class="king-emoji-custom" placeholder="oder eigenes Emoji eingeben" maxlength="2">
+      <div class="modal-section">🏆 Titel (<span id="king-title-progress"></span>)</div>
+      <p style="font-size:11px; color:var(--text3); margin-bottom:8px;">Name und Emoji des höchsten Cultwesens ändern sich nur durch freigeschaltete Titel — je mehr Figuren du sammelst, desto mehr schalten sich frei.</p>
+      <div class="king-title-list" id="king-title-list"></div>
     </div>
 
     <div class="modal-section">Geschichte</div>
@@ -994,14 +961,10 @@ const STORAGE_KEY = 'figurkampf_save_v1';
 
 function defaultSaveData() {
   return {
-    // Wer das Spiel zum ersten Mal startet, besitzt noch keine Figuren.
-    // (Zum Testen ohne NFC-Hardware: die ersten 3 sind vorab freigeschaltet.)
-    // Der König (id 9) ist Pflicht und daher immer von Anfang an dabei.
+    // Der Spieler beginnt nur mit dem eigenen höchsten Cultwesen (Pflichtfigur,
+    // nie per NFC zu finden). Alle anderen Figuren müssen erst gescannt werden.
     collection: {
-      1: { owned:true,  kills:34, uses:18, isNew:false },
-      3: { owned:true,  kills:18, uses:22, isNew:false },
-      5: { owned:true,  kills:29, uses:15, isNew:false },
-      9: { owned:true,  kills:0,  uses:0,  isNew:false },
+      9: { owned:true, kills:0, uses:0, isNew:false },
     },
     stats: { gamesPlayed:0, wins:0, losses:0 }
   };
@@ -1032,38 +995,142 @@ function saveSave() {
 
 let saveData = loadSave();
 
+// ---------------------------------------------------------------
+// TEST-CHEAT: ?maxed=N in der URL (z.B. cultwars.html?maxed=30) fügt N
+// synthetische Testfiguren zur Sammlung hinzu, um die okkulte Eskalation
+// bei jeder beliebigen Stufe begutachten zu können, ohne wirklich zu
+// scannen. Wirkt nur für die aktuelle Sitzung — ein Reload ohne den
+// Parameter zeigt wieder den echten Spielstand (bis eine echte
+// Sammel-Aktion während der Cheat-Sitzung gespeichert wird).
+// ---------------------------------------------------------------
+(function applyMaxedCheat() {
+  const params = new URLSearchParams(window.location.search);
+  const n = parseInt(params.get('maxed') ?? params.get('maxxed'), 10);
+  if (!n || n <= 0) return;
+  for (let i = 1; i <= n; i++) {
+    const id = 9000 + i;
+    FIGURES_CATALOG.push({
+      id, name: 'Testfigur ' + i, emoji: '🧪', size: 1, moveMode: 'jump',
+      story: 'Zu Testzwecken über ?maxed erzeugt.',
+      move: [[0,0,0,0,0],[0,0,0,0,0],[0,0,2,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+    });
+    saveData.collection[id] = { owned: true, kills: 0, uses: 0, isNew: false };
+  }
+  console.info(`🧪 Cheat aktiv: +${n} Testfiguren geladen (?maxed=${n})`);
+})();
+
 // FIGURES = Katalog-Einträge angereichert mit den persönlichen Spielerdaten.
 // Wird nach jeder Änderung an saveData neu zusammengesetzt.
 let FIGURES = [];
 function rebuildFigures() {
   FIGURES = FIGURES_CATALOG.map(f => {
     const owned = saveData.collection[f.id] || { owned:false, kills:0, uses:0, isNew:false };
-    // Das höchste Cultwesen lässt sein Emoji spielerseitig frei wählen (kein
-    // Admin-Tool nötig) — der Override wird pro Spielstand gespeichert.
+    // Das höchste Cultwesen bekommt Emoji + Titel ausschließlich über die
+    // mit dem Sammelfortschritt freigeschalteten Titel-Stufen (siehe
+    // KING_TITLE_TIERS) — kein frei wählbarer Name oder eigenes Emoji.
     const emoji = owned.emoji || f.emoji;
-    return { ...f, emoji, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned };
+    const name = owned.title ? `${owned.title} ${f.name}` : f.name;
+    return { ...f, emoji, name, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned };
   });
   applyCorruptionTheme();
 }
 
 // ---------------------------------------------------------------
 // OKKULTE ESKALATION
-// Am Anfang ist die App schlicht dunkel. Mit jeder zusätzlich gescannten
-// Figur (über den Werksstand aus defaultSaveData() hinaus) wird das Theme
-// düsterer — siehe die body[data-corruption] CSS-Regeln weiter oben.
+// Am Anfang ist die App schlicht dunkel — nur das eigene höchste Cultwesen
+// ist dabei. Mit jeder weiteren gescannten Figur verschiebt sich die Optik
+// kontinuierlich (nicht in Sprüngen) Richtung düster/okkult, bis Stufe 33.
 // ---------------------------------------------------------------
 const STARTER_OWNED_COUNT = Object.keys(defaultSaveData().collection).length;
+const MAX_CORRUPTION_STAGE = 33;
 
-function corruptionStage() {
-  const extra = Math.max(0, ownedFigures().length - STARTER_OWNED_COUNT);
-  if (extra >= 5) return 3;
-  if (extra >= 3) return 2;
-  if (extra >= 1) return 1;
-  return 0;
+// Titel-Stufen für das höchste Cultwesen: schaltet mit steigender Sammlung
+// neue Titel+Emoji-Kombinationen frei, die der Spieler auswählen kann.
+const KING_TITLE_TIERS = [
+  { stage:1,  title:'Gewöhnliches',     emoji:'👁' },
+  { stage:2,  title:'Geheimnisvolles',  emoji:'🌙' },
+  { stage:3,  title:'Verspieltes',      emoji:'♟' },
+  { stage:5,  title:'Verdorbenes',      emoji:'🖤' },
+  { stage:8,  title:'Verfluchtes',      emoji:'☠️' },
+  { stage:10, title:'Blutrünstiges',    emoji:'🩸' },
+  { stage:12, title:'Übernatürliches',  emoji:'✨' },
+  { stage:13, title:'Hinterlistiges',   emoji:'🐍' },
+  { stage:15, title:'Entsetzliches',    emoji:'😱' },
+  { stage:20, title:'Transzendentes',   emoji:'👑' },
+  { stage:22, title:'Kosmisches',       emoji:'🌌' },
+  { stage:25, title:'Allgegenwärtiges', emoji:'♾️' },
+  { stage:30, title:'Heißes',           emoji:'🔥' },
+  { stage:33, title:'Allmächtiges',     emoji:'🧿' },
+];
+
+// Ankerpunkte für die Farb-Interpolation (stage = zusätzlich gesammelte
+// Figuren). Zwischen zwei Ankerpunkten wird linear interpoliert, damit
+// jede einzelne neu gescannte Figur eine kleine, sichtbare Verschiebung ergibt.
+const THEME_STOPS = [
+  { stage:0,  bg:'#0a0a12', surface:'#12121e', surface2:'#1a1a2e', accent:'#7c3aed', accent2:'#a855f7', gold:'#f59e0b', headerTop:'#16073a', nfc1:'#2d1660', nfc2:'#1a0940', text:'#f1f5f9', text2:'#94a3b8', text3:'#64748b', player:'#7c3aed' },
+  { stage:8,  bg:'#08060d', surface:'#12121e', surface2:'#1a1a2e', accent:'#6d28d9', accent2:'#9333ea', gold:'#d97706', headerTop:'#200a3d', nfc1:'#2a0f4a', nfc2:'#170733', text:'#f1f5f9', text2:'#94a3b8', text3:'#64748b', player:'#8b5cf6' },
+  { stage:20, bg:'#050308', surface:'#0d0710', surface2:'#150a1a', accent:'#7f1d1d', accent2:'#c0392b', gold:'#92400e', headerTop:'#2c0b1a', nfc1:'#3a0f1a', nfc2:'#1a0508', text:'#f3ecec', text2:'#a89aa0', text3:'#64748b', player:'#a855f7' },
+  { stage:33, bg:'#020103', surface:'#0a0508', surface2:'#12080c', accent:'#450a0a', accent2:'#dc2626', gold:'#78350f', headerTop:'#300609', nfc1:'#400a0f', nfc2:'#150204', text:'#e7d9d9', text2:'#9c8a8a', text3:'#6b5858', player:'#c026d3' },
+];
+
+function hexToRgb(hex) {
+  const num = parseInt(hex.replace('#',''), 16);
+  return [(num>>16)&255, (num>>8)&255, num&255];
+}
+function rgbToHex([r,g,b]) {
+  return '#' + [r,g,b].map(v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+function lerp(a,b,t) { return a + (b-a)*t; }
+function lerpHex(h1,h2,t) {
+  const c1 = hexToRgb(h1), c2 = hexToRgb(h2);
+  return rgbToHex([lerp(c1[0],c2[0],t), lerp(c1[1],c2[1],t), lerp(c1[2],c2[2],t)]);
+}
+
+// Anzahl zusätzlich gesammelter Figuren über das eigene höchste Cultwesen hinaus (0-33).
+function corruptionExtra() {
+  return Math.max(0, Math.min(MAX_CORRUPTION_STAGE, ownedFigures().length - STARTER_OWNED_COUNT));
+}
+
+function interpolateTheme(extra) {
+  let lo = THEME_STOPS[0], hi = THEME_STOPS[THEME_STOPS.length-1];
+  for (let i=0; i<THEME_STOPS.length-1; i++) {
+    if (extra >= THEME_STOPS[i].stage && extra <= THEME_STOPS[i+1].stage) {
+      lo = THEME_STOPS[i]; hi = THEME_STOPS[i+1];
+      break;
+    }
+  }
+  const span = hi.stage - lo.stage;
+  const t = span === 0 ? 0 : (extra - lo.stage) / span;
+  const keys = ['bg','surface','surface2','accent','accent2','gold','headerTop','nfc1','nfc2','text','text2','text3','player'];
+  const out = {};
+  keys.forEach(k => { out[k] = lerpHex(lo[k], hi[k], t); });
+  return out;
 }
 
 function applyCorruptionTheme() {
-  document.body.dataset.corruption = corruptionStage();
+  const extra = corruptionExtra();
+  const theme = interpolateTheme(extra);
+  const t = extra / MAX_CORRUPTION_STAGE;
+  const body = document.body;
+  const set = (name, val) => body.style.setProperty(name, val);
+  set('--bg', theme.bg);
+  set('--surface', theme.surface);
+  set('--surface2', theme.surface2);
+  set('--accent', theme.accent);
+  set('--accent2', theme.accent2);
+  set('--accent-rgb', hexToRgb(theme.accent).join(','));
+  set('--player-rgb', hexToRgb(theme.player).join(','));
+  set('--gold', theme.gold);
+  set('--header-grad-top', theme.headerTop);
+  set('--nfc-grad-1', theme.nfc1);
+  set('--nfc-grad-2', theme.nfc2);
+  set('--text', theme.text);
+  set('--text2', theme.text2);
+  set('--text3', theme.text3);
+  set('--border', `rgba(${hexToRgb(theme.accent).join(',')},${(0.25 + t*0.15).toFixed(2)})`);
+  set('--vignette-opacity', (t*0.75).toFixed(3));
+  set('--bg-image-opacity', (t*0.55).toFixed(3));
+  body.classList.toggle('deep-corruption', extra >= 20);
 }
 
 rebuildFigures();
@@ -1210,10 +1277,6 @@ function renderFigSelect() {
 
 function sizeLabel(s) { return s===1?'1×1':s===4?'2×2':'3×3'; }
 
-// Emoji-Auswahl für das höchste Cultwesen — thematisch passend, aber frei
-// ergänzbar über das eigene-Emoji-Feld darunter.
-const KING_EMOJIS = ['👑','🔱','⚜️','🗿','👁️','🕯️','🌑','⚡','🩸','💀','🐍','🦇','🌟','🎭','🔥','🖤'];
-
 function openFigModal(f) {
   currentFig = f;
   document.getElementById('m-emoji').textContent = f.emoji;
@@ -1224,18 +1287,24 @@ function openFigModal(f) {
   const kingBlock = document.getElementById('m-king-emoji-block');
   kingBlock.style.display = f.isKing ? 'block' : 'none';
   if (f.isKing) {
-    const pick = document.getElementById('king-emoji-pick');
-    pick.innerHTML = '';
-    KING_EMOJIS.forEach(e => {
+    const owned = saveData.collection[f.id] || {};
+    const extra = corruptionExtra();
+    document.getElementById('king-title-progress').textContent = `${extra} / ${MAX_CORRUPTION_STAGE} Figuren gesammelt`;
+    const currentTitle = owned.title || '';
+    const list = document.getElementById('king-title-list');
+    list.innerHTML = '';
+    KING_TITLE_TIERS.forEach(tier => {
+      const unlocked = extra >= tier.stage;
       const d = document.createElement('div');
-      d.className = 'kep' + (e===f.emoji ? ' sel' : '');
-      d.textContent = e;
-      d.onclick = () => setKingEmoji(f.id, e);
-      pick.appendChild(d);
+      d.className = 'ktier' + (!unlocked ? ' locked' : '') + (unlocked && currentTitle===tier.title ? ' sel' : '');
+      if (unlocked) {
+        d.innerHTML = `<span class="kt-emoji">${tier.emoji}</span><span>${tier.title}</span><span class="kt-stage">Stufe ${tier.stage}</span>`;
+        d.onclick = () => setKingTitle(f.id, tier.title, tier.emoji);
+      } else {
+        d.innerHTML = `<span class="kt-emoji">🔒</span><span>???</span><span class="kt-stage">Stufe ${tier.stage}</span>`;
+      }
+      list.appendChild(d);
     });
-    const custom = document.getElementById('king-emoji-custom');
-    custom.value = KING_EMOJIS.includes(f.emoji) ? '' : f.emoji;
-    custom.onchange = () => { const v = custom.value.trim(); if (v) setKingEmoji(f.id, v); };
   }
 
   const mc = document.getElementById('m-move');
@@ -1257,9 +1326,9 @@ function openFigModal(f) {
 // Speichert das vom Spieler gewählte Emoji für sein höchstes Cultwesen
 // (nur spielerseitig, keine Admin-Tool-Interaktion nötig) und aktualisiert
 // alle Stellen, an denen die Figur angezeigt wird.
-function setKingEmoji(figId, emoji) {
-  if (!saveData.collection[figId]) return;
-  saveData.collection[figId].emoji = emoji;
+// Speichert eine Änderung an einer Cultwesen-Figur (Emoji/Name/Titel) und
+// aktualisiert alle Stellen, an denen die Figur angezeigt wird.
+function refreshKingViews(figId) {
   saveSave();
   rebuildFigures();
   const f = FIGURES.find(x => x.id === figId);
@@ -1267,6 +1336,13 @@ function setKingEmoji(figId, emoji) {
   renderCollection();
   renderKodex();
   if (document.getElementById('page-spiel').classList.contains('active')) renderFigSelect();
+}
+
+function setKingTitle(figId, title, emoji) {
+  if (!saveData.collection[figId]) return;
+  saveData.collection[figId].title = title;
+  saveData.collection[figId].emoji = emoji;
+  refreshKingViews(figId);
 }
 
 function closeFigModal(e) { if(e.target===document.getElementById('fig-modal')) closeModal(); }

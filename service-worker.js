@@ -1,10 +1,11 @@
 // Cultwars Service Worker — Offline-Caching für die Haupt-App.
 // Cache-Version erhöhen, wenn sich cultwars.html/manifest/icons ändern,
 // damit Nutzer beim nächsten Start die neue Version bekommen.
-const CACHE_NAME = 'cultwars-v2';
+const CACHE_NAME = 'cultwars-v3';
 const PRECACHE_URLS = [
   './cultwars.html',
   './manifest.json',
+  './bg.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

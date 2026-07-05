@@ -9,9 +9,9 @@
 - Jede Figur hat: Name, Emoji als Sprite, Größe (1×1 / 2×2 / 3×3 Felder), Bewegungsmuster (5×5 Grid wie Schach), Bewegungsart (springt/gleitet), Story-Text
 - Neue, noch nicht gescannte Figuren sind im Kodex als `???` verschleiert sichtbar
 - Beim ersten Öffnen einer neu gescannten Figur verschwindet der NEU-Badge
-- Jeder Spieler besitzt zwingend einen König: das **Höchste Cultwesen** (Katalog-ID 9) — von Anfang an freigeschaltet, muss nie per NFC gefunden werden, deutlich hervorgehoben (Sammlung, Kodex, Auswahl, Spielbrett)
-- Emoji des höchsten Cultwesens ist spielerseitig frei wählbar (Figur-Detailansicht, kein Admin-Tool nötig) — Auswahl aus thematischer Palette oder eigenes Emoji, Name und Bewegungsmuster (identisch zur "König"-Vorlage) bleiben fix
-- Das Design wird mit dem Sammelfortschritt zunehmend okkult und düster (siehe eigener Abschnitt unten)
+- Der Spieler startet mit genau einer Figur: dem eigenen **Höchsten Cultwesen** (Katalog-ID 9, der Pflicht-König) — muss nie per NFC gefunden werden, alle anderen Figuren müssen erst gescannt werden
+- Name und Emoji des höchsten Cultwesens ändern sich ausschließlich über mit dem Sammelfortschritt freigeschaltete Titel-Stufen (Figur-Detailansicht) — kein frei eingebbarer Name/Emoji, nur Auswahl aus freigeschalteten Optionen; Bewegungsmuster (identisch zur "König"-Vorlage) bleibt fix
+- Das Design wird mit jeder zusätzlich gesammelten Figur kontinuierlich okkulter und düsterer, bis Stufe 33 (siehe eigener Abschnitt unten)
 
 **Spielen — Solo**
 - Spielfeldgröße wählen (6×6, 8×8, 10×10)
@@ -56,16 +56,36 @@
 
 ## Okkulte Design-Eskalation
 
-Die App startet als schlichtes Dark-Theme. Mit jeder zusätzlich gescannten Figur (über den Werksstand aus `defaultSaveData()` hinaus, aktuell 4 Figuren: König + 3 Test-Figuren) wird das Erscheinungsbild düsterer. Die Stufe wird bei jedem `rebuildFigures()`-Aufruf aus `ownedFigures().length` neu berechnet und als `data-corruption`-Attribut auf `<body>` gesetzt:
+Die App startet als schlichtes Dark-Theme mit nur dem eigenen höchsten Cultwesen in der Sammlung. Mit jeder zusätzlich gescannten Figur verschiebt sich die Optik **kontinuierlich** (nicht in großen Sprüngen) Richtung düster/okkult, bis Stufe 33 (Maximum). Die "Stufe" entspricht 1:1 der Anzahl zusätzlich gesammelter Figuren (`ownedFigures().length - STARTER_OWNED_COUNT`, aktuell `STARTER_OWNED_COUNT = 1`).
 
-| Stufe | Zusätzlich gesammelte Figuren | Optik |
+Technisch: `applyCorruptionTheme()` läuft bei jedem `rebuildFigures()`-Aufruf, interpoliert zwischen vier handgesetzten Farb-Ankerpunkten (`THEME_STOPS` bei Stufe 0, 8, 20, 33) und schreibt das Ergebnis als Inline-CSS-Variablen auf `<body>` (`--bg`, `--accent`, `--accent2`, `--accent-rgb`, `--gold`, `--text/2/3`, `--header-grad-top`, `--nfc-grad-1/2`, `--border`, `--vignette-opacity`, `--bg-image-opacity`). Dadurch verschiebt sich die Farbgebung mit *jeder einzelnen* neuen Figur ein kleines Stück, statt in wenigen diskreten Stufen zu springen. Ab Stufe 20 bekommt `<body>` zusätzlich die Klasse `.deep-corruption`, die eine dezente Flacker-Animation auf Vignette und Titel aktiviert (respektiert `prefers-reduced-motion`).
+
+Eine Ausnahme ist `--player-rgb`: die Farbe der eigenen Spielfiguren auf dem Brett ist bewusst von der allgemeinen Akzentfarbe entkoppelt (bleibt violett/magenta statt nach Rot zu wandern), damit sie bei hoher Korruptionsstufe nicht mit der (fest roten) Gegnerfarbe verschmilzt.
+
+**Hintergrundbild:** `bg.png` liegt als fixer Layer (`#bg-layer`, `z-index:-1`) hinter dem gesamten Inhalt, standardmäßig unsichtbar (`--bg-image-opacity: 0`). Die Opacity steigt mit derselben Stufe linear bis max. 0.55 bei Stufe 33. Das Bild wird per CSS (`grayscale` + `contrast` + roter `mix-blend-mode: multiply`-Overlay) rot eingefärbt, ohne die Originaldatei zu verändern.
+
+**Titel-Freischaltung für das höchste Cultwesen:** Mit steigender Stufe schaltet `KING_TITLE_TIERS` neue Titel+Emoji-Kombinationen frei, die in der Figur-Detailansicht wählbar werden (gesperrte Stufen erscheinen als "🔒 ???"):
+
+| Stufe | Titel | Emoji |
 |---|---|---|
-| 0 | 0 (Werkszustand) | normales lila Dark-Theme, keine Effekte |
-| 1 | 1–2 | Hintergrund leicht dunkler, Akzentfarbe verblasst Richtung gedecktes Violett, dezente Vignette |
-| 2 | 3–4 | Farbschema kippt zu Blutrot, stärkere Vignette |
-| 3 | 5+ | nahezu schwarzer Hintergrund, intensive rote Vignette mit leichtem Flackern, Titel pulsiert |
+| 1 | Gewöhnliches | 👁 |
+| 2 | Geheimnisvolles | 🌙 |
+| 3 | Verspieltes | ♟ |
+| 5 | Verdorbenes | 🖤 |
+| 8 | Verfluchtes | ☠️ |
+| 10 | Blutrünstiges | 🩸 |
+| 12 | Übernatürliches | ✨ |
+| 13 | Hinterlistiges | 🐍 |
+| 15 | Entsetzliches | 😱 |
+| 20 | Transzendentes | 👑 |
+| 22 | Kosmisches | 🌌 |
+| 25 | Allgegenwärtiges | ♾️ |
+| 30 | Heißes | 🔥 |
+| 33 | Allmächtiges | 🧿 |
 
-Alle Farbwerte sind CSS-Variablen (`--bg`, `--accent`, `--accent-rgb`, `--gold`, `--border`, `--header-grad-top`, `--nfc-grad-1/2`, …), die pro Stufe über `body[data-corruption="N"]`-Selektoren überschrieben werden — Komponenten müssen dafür nicht einzeln angepasst werden. Eine Ausnahme ist `--player-rgb`: die Farbe der eigenen Spielfiguren auf dem Brett ist bewusst von der allgemeinen Akzentfarbe entkoppelt (bleibt violett/magenta), damit sie bei hoher Korruptionsstufe nicht mit der (fest roten) Gegnerfarbe verschmilzt. Animationen respektieren `prefers-reduced-motion`.
+Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangestellt (z.B. "Verdorbenes Höchstes Cultwesen") und erscheint überall, wo der Figurenname angezeigt wird. Es gibt keine freie Name- oder Emoji-Eingabe mehr — auswählbar sind ausschließlich die freigeschalteten Titel-Stufen.
+
+**Test-Cheat:** `cultwars.html?maxed=N` bzw. `?maxxed=N` (beide Schreibweisen funktionieren, z.B. `?maxed=30`) fügt beim Laden `N` synthetische Testfiguren zur Sammlung hinzu, um jede Eskalationsstufe ohne echtes Scannen begutachten zu können. Funktioniert auch beim direkten Öffnen per `file://` (kein Server nötig). Wirkt nur clientseitig für die laufende Sitzung und verändert `localStorage` nicht von sich aus — ein Reload ohne den Parameter zeigt wieder den echten Spielstand. (Bewusst als URL-Parameter statt als separate `cultwars-maxxed-out.html`-Kopie umgesetzt, damit keine zweite, potenziell veraltende Kopie der App gepflegt werden muss.)
 
 ---
 
@@ -112,8 +132,12 @@ Alle Farbwerte sind CSS-Variablen (`--bg`, `--accent`, `--accent-rgb`, `--gold`,
 | Höchstes Cultwesen (König, Katalog-ID 9) fest im Katalog, für jeden Spieler von Anfang an freigeschaltet | ✅ |
 | Emoji des höchsten Cultwesens spielerseitig wählbar (Figur-Detailansicht, Override in `saveData` gespeichert) | ✅ |
 | App umbenannt: `figuren-spiel.html` → `cultwars.html`, Seitentitel "Cultwars", Kodex-Überschrift "Cultwesenkodex" | ✅ |
-| Okkulte Design-Eskalation: Theme wird mit jeder zusätzlich gesammelten Figur düsterer (4 Stufen, `body[data-corruption]`) | ✅ |
+| Okkulte Design-Eskalation: Theme verschiebt sich kontinuierlich mit jeder Figur, Maximum bei Stufe 33 | ✅ |
 | Spieler-/Gegner-Figuren auf dem Brett bleiben auch bei maximaler Korruption farblich unterscheidbar (separate `--player-rgb`) | ✅ |
+| Spieler startet mit genau einer Figur (dem eigenen höchsten Cultwesen), alle anderen müssen gescannt werden | ✅ |
+| 14 freischaltbare Titel+Emoji-Kombinationen für das höchste Cultwesen (Stufe 1 bis 33), keine freie Name-/Emoji-Eingabe | ✅ |
+| Rot eingefärbter Hintergrund-Layer (`bg.png`) wird mit Sammelfortschritt zunehmend sichtbar | ✅ |
+| App-Icons (192/512/maskable/Favicon) aus `icon.png` generiert | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
@@ -141,7 +165,7 @@ Die App ist ein vollständig funktionsfähiger **Klick-Prototyp** im Browser und
 - **Service Worker** braucht HTTPS oder `localhost` zum Registrieren (Browser-Sicherheitsanforderung); lokal getestet über `python -m http.server`.
 - **König im Multiplayer:** Der Host löst die vom Sender empfangenen Figuren-IDs über seinen eigenen `FIGURES_CATALOG` auf. Kennt der Host den König des Senders nicht (z.B. eigene Admin-Tool-Kreation, nie per NFC synchronisiert), fehlt er in der Aufstellung und die Schlacht kann sofort enden — die App warnt in diesem Fall explizit.
 
-Gesamtgröße der Haupt-App: ~228 KB (inkl. eingebetteter QR-Bibliotheken qrcodejs ≈ 20 KB + jsQR ≈ 130 KB), zzgl. `manifest.json`, `service-worker.js` und Icons.
+Gesamtgröße der Haupt-App-Datei: ~250 KB (inkl. eingebetteter QR-Bibliotheken qrcodejs ≈ 20 KB + jsQR ≈ 130 KB), zzgl. `manifest.json`, `service-worker.js` und Icons. **Achtung:** `bg.png` (~2,5 MB) wird vom Service Worker vorgecacht und ist damit der mit Abstand größte Ladeposten der App — auf einer schwachen Mobilfunkverbindung beim ersten Laden spürbar. Bei Bedarf könnte das Bild verlustfrei bzw. verlustarm komprimiert werden, ohne den sichtbaren Effekt zu verändern.
 
 ---
 
