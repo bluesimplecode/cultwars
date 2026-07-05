@@ -15,15 +15,16 @@
 
 **Spielen — Solo**
 - Spielfeldgröße wählen (6×6, 8×8, 10×10)
-- Eigene Figuren aus der Sammlung auswählen — der König muss dabei sein, sonst kein Spielstart möglich
+- Keine manuelle Figuren-Auswahl mehr — alle besessenen Figuren (inkl. Pflicht-König) stehen automatisch zur Platzierung bereit
 - Figuren in den untersten 3 Reihen frei platzieren (inkl. Kollisionsprüfung und Größenberücksichtigung) — der König muss ebenfalls platziert werden
 - Rundenbasiertes Spiel: Spieler zieht, dann KI. Auch der Gegner hat immer einen eigenen König
 - Sieg/Niederlage wird erkannt und in Statistiken gespeichert — fällt der eigene oder gegnerische König, endet die Schlacht sofort, unabhängig von übrigen Figuren
 
 **Spielen — Multiplayer**
 - Zwei Rollen: Sender und Host
-- Sender platziert Figuren (inkl. Pflicht-König) → generiert QR-Code aus seiner Aufstellung
-- Host platziert Figuren (inkl. Pflicht-König) → scannt den QR-Code des Senders mit der Kamera
+- Beide nehmen automatisch alle besessenen Figuren (inkl. Pflicht-König) mit in die Platzierung — keine manuelle Auswahl
+- Sender platziert Figuren → generiert QR-Code aus seiner Aufstellung
+- Host platziert Figuren → scannt den QR-Code des Senders mit der Kamera
 - Beide Aufstellungen werden auf einem Gerät (Host) zusammengeführt, Sender-Figuren werden gespiegelt
 - Beide spielen dann abwechselnd rundenbasiert auf dem Host-Gerät (kein KI-Zug)
 
@@ -105,6 +106,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Statistiken (Kills, Nutzung, Spiele/Siege persistent) | ✅ |
 | localStorage-Persistenz (`figurkampf_save_v1`) | ✅ |
 | Spielfeldgröße wählbar | ✅ |
+| Keine manuelle Figuren-Auswahl mehr — Solo und Multiplayer (Host + Sender) nehmen automatisch alle besessenen Figuren mit | ✅ |
 | Platzierungsphase: freie Positionierung in den untersten 3 Reihen | ✅ |
 | Platzierung berücksichtigt Figurengröße (1×1, 2×2, 3×3 als Block) | ✅ |
 | Emoji als skalierter Block-Overlay (nicht einzelne Felder) | ✅ |

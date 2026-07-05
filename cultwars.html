@@ -713,10 +713,6 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">Figuren-Auswahl</div>
-      <div class="fig-grid" id="fig-select-grid" style="padding:0; margin-bottom:0;"></div>
-    </div>
     <button class="action-btn" onclick="launchGame()">Spiel starten ▶</button>
   </div>
 
@@ -883,10 +879,6 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
           <div class="badge" onclick="hostSelectSize(this,'10')">10×10</div>
         </div>
 
-        <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:8px;">Figuren wählen</div>
-        <div class="fig-grid" id="host-fig-select" style="padding:0; margin-bottom:14px;"></div>
-
-        <div style="font-size:11px; color:var(--text3); margin-bottom:10px;" id="host-sel-count">0 Figuren gewählt</div>
         <button class="action-btn" onclick="hostLineupDone()">Weiter zur Platzierung →</button>
         <button class="action-btn secondary" onclick="closeMpFlow()">Abbrechen</button>
       </div>
@@ -1179,7 +1171,6 @@ function goPage(name, btn) {
   if (name === 'sammeln') renderCollection();
   if (name === 'kodex') renderKodex();
   if (name === 'stats') renderStats();
-  if (name === 'spiel') renderFigSelect();
 }
 
 function renderCollection() {
@@ -1257,24 +1248,6 @@ function renderStats() {
     </div>`).join('');
 }
 
-function renderFigSelect() {
-  const grid = document.getElementById('fig-select-grid');
-  grid.innerHTML = '';
-  const owned = ownedFigures();
-  if (owned.length === 0) {
-    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:var(--text3); padding:16px 10px; font-size:12px;">Sammle zuerst Figuren im Tab "Sammeln"!</div>`;
-    return;
-  }
-  owned.forEach(f => {
-    const d = document.createElement('div');
-    d.className = 'fig-card' + (selectedFigs.has(f.id) ? ' selected' : '') + (f.isKing ? ' king-glow' : '');
-    d.style.borderColor = selectedFigs.has(f.id) ? 'var(--accent2)' : '';
-    d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name" style="font-size:10px;">${f.name}</span><span class="fig-size">${sizeLabel(f.size)}</span>`;
-    d.onclick = () => { selectedFigs.has(f.id) ? selectedFigs.delete(f.id) : selectedFigs.add(f.id); renderFigSelect(); };
-    grid.appendChild(d);
-  });
-}
-
 function sizeLabel(s) { return s===1?'1×1':s===4?'2×2':'3×3'; }
 
 function openFigModal(f) {
@@ -1324,8 +1297,6 @@ function openFigModal(f) {
 }
 
 // Speichert das vom Spieler gewählte Emoji für sein höchstes Cultwesen
-// (nur spielerseitig, keine Admin-Tool-Interaktion nötig) und aktualisiert
-// alle Stellen, an denen die Figur angezeigt wird.
 // Speichert eine Änderung an einer Cultwesen-Figur (Emoji/Name/Titel) und
 // aktualisiert alle Stellen, an denen die Figur angezeigt wird.
 function refreshKingViews(figId) {
@@ -1335,7 +1306,6 @@ function refreshKingViews(figId) {
   if (f) openFigModal(f);
   renderCollection();
   renderKodex();
-  if (document.getElementById('page-spiel').classList.contains('active')) renderFigSelect();
 }
 
 function setKingTitle(figId, title, emoji) {
@@ -1542,10 +1512,9 @@ function drawOverlays(outerEl, piecesToDraw, selAnchor, moveDests) {
 
 // --- PLACEMENT PHASE ---
 function launchGame() {
-  if (![...selectedFigs].some(isKingId)) {
-    showToast('👑 Wähle deinen König aus, bevor du startest!');
-    return;
-  }
+  // Keine manuelle Figuren-Auswahl mehr — Solo wie Multiplayer nehmen
+  // automatisch alle Figuren mit, die der Spieler besitzt.
+  selectedFigs = new Set(ownedFigures().map(f => f.id));
 
   document.getElementById('game-menu').style.display = 'none';
   document.getElementById('placement-phase').style.display = 'block';
@@ -1985,8 +1954,6 @@ function closeMpFlow() {
   document.getElementById('game-menu').style.display = 'block';
 }
 
-let hostSelectedFigs = new Set();
-
 let mpMode = null; // null | 'sender' | 'host' — steuert, ob die Platzierungsphase im Multiplayer-Sender-Modus läuft
 
 function mpRole(role) {
@@ -2002,8 +1969,6 @@ function mpRole(role) {
   }
   document.getElementById('mp-role-select').style.display = 'none';
   document.getElementById('mp-host-flow').style.display = 'block';
-  hostSelectedFigs = new Set();
-  renderHostFigSelect();
 }
 
 function hostSelectSize(el, s) {
@@ -2012,28 +1977,9 @@ function hostSelectSize(el, s) {
   boardSize = parseInt(s);
 }
 
-function renderHostFigSelect() {
-  const grid = document.getElementById('host-fig-select');
-  grid.innerHTML = '';
-  FIGURES.forEach(f => {
-    const d = document.createElement('div');
-    const sel = hostSelectedFigs.has(f.id);
-    d.className = 'fig-card' + (f.isKing ? ' king-glow' : '');
-    d.style.borderColor = sel ? 'var(--accent2)' : '';
-    d.innerHTML = `<span class="fig-emoji">${f.emoji}</span><span class="fig-name" style="font-size:10px;">${f.name}</span><span class="fig-size">${sizeLabel(f.size)}</span>`;
-    d.onclick = () => {
-      sel ? hostSelectedFigs.delete(f.id) : hostSelectedFigs.add(f.id);
-      renderHostFigSelect();
-    };
-    grid.appendChild(d);
-  });
-  document.getElementById('host-sel-count').textContent = hostSelectedFigs.size + ' Figur' + (hostSelectedFigs.size !== 1 ? 'en' : '') + ' gewählt';
-}
-
 function hostLineupDone() {
-  if (hostSelectedFigs.size === 0) { showToast('Bitte mindestens eine Figur wählen!'); return; }
-  selectedFigs = new Set(hostSelectedFigs);
   // Host geht jetzt durch die normale Platzierungsphase, genau wie der Sender.
+  // launchGame() nimmt automatisch alle Figuren des Hosts mit.
   document.getElementById('mp-modal').classList.remove('open');
   mpMode = 'host';
   launchGame();
@@ -2278,7 +2224,6 @@ function launchGameFromExistingPlacement() {
 renderCollection();
 renderKodex();
 renderStats();
-renderFigSelect();
 
 const nfcNote = document.getElementById('nfc-support-note');
 if (nfcNote) {
