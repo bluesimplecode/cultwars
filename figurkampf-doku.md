@@ -28,6 +28,13 @@
 - Beide Aufstellungen werden auf einem Gerät (Host) zusammengeführt, Sender-Figuren werden gespiegelt
 - Beide spielen dann abwechselnd rundenbasiert auf dem Host-Gerät (kein KI-Zug)
 
+**Geheime Figur: Glitch**
+- Scannt man einen ungültigen NFC-Tag (kein gültiges Figuren-JSON — z.B. ein fremder Code oder eine EC-Karte), wird statt einer Fehlermeldung die geheime Figur `👾 Glitch` (Katalog-ID 10, fest im Katalog) freigeschaltet
+- Im Kampf nicht manuell steuerbar (kann nicht ausgewählt/bewegt werden)
+- Zu Beginn des eigenen Zuges der besitzenden Seite besteht eine 50%-Chance, dass sie sich selbst auf ein beliebiges freies Feld bewegt (springt, ignoriert Blockaden, nicht auf ihr Bewegungsmuster beschränkt)
+- Bewegt sie sich eigenständig, endet der Zug der besitzenden Seite direkt danach, ohne dass diese noch eine Figur bewegen darf
+- Kann wie jede andere Figur von Gegnern erobert werden
+
 **Kodex**
 - Alle im System bekannten Figuren anzeigen
 - Nicht gesammelte Figuren als anonyme Silhouette zeigen
@@ -140,6 +147,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | 14 freischaltbare Titel+Emoji-Kombinationen für das höchste Cultwesen (Stufe 1 bis 33), keine freie Name-/Emoji-Eingabe | ✅ |
 | Rot eingefärbter Hintergrund-Layer (`bg.png`) wird mit Sammelfortschritt zunehmend sichtbar | ✅ |
 | App-Icons (192/512/maskable/Favicon) aus `icon.png` generiert | ✅ |
+| Geheime Figur `👾 Glitch`: wird bei ungültigem NFC-Scan freigeschaltet, nicht steuerbar, bewegt sich zu Zugbeginn mit 50% Chance selbst und beendet danach sofort den Zug | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 

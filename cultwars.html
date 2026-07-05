@@ -1001,7 +1001,16 @@ const FIGURES_CATALOG = [
   { id:9, name:'Cultwesen', emoji:'👑', size:1, moveMode:'jump', isKing:true,
     story:'Das Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt es, zerfällt die gesamte Ordnung.',
     move:[[0,0,0,0,0],[0,1,1,1,0],[0,1,2,1,0],[0,1,1,1,0],[0,0,0,0,0]] },
+  // Geheime Figur: wird nicht per gültigem NFC-Scan gefunden, sondern erscheint,
+  // wenn ein ungültiger/fremder Tag gescannt wird (siehe scanNFC/parseFigurePayload).
+  // Kann im Kampf nicht manuell gesteuert werden (siehe handleCellClick), bewegt
+  // sich stattdessen zu Beginn ihres eigenen Zuges mit 50% Chance selbst auf ein
+  // beliebiges freies Feld (siehe tryGlitchAutoMove) — danach endet der Zug sofort.
+  { id:10, name:'Glitch', emoji:'👾', size:1, moveMode:'jump', isGlitch:true,
+    story:'Kein Katalogeintrag, kein Ursprung — nur ein Riss, der auftauchte, als ein fremder Code gescannt wurde. Sie gehorcht niemandem und bewegt sich, wie es ihr beliebt.',
+    move:[[0,0,0,0,0],[0,0,0,0,0],[0,0,2,0,0],[0,0,0,0,0],[0,0,0,0,0]] },
 ];
+const GLITCH_ID = 10;
 
 // ---------------------------------------------------------------
 // PERSISTENZ
@@ -1281,6 +1290,13 @@ function isKingId(id) {
   return !!(f && f.isKing);
 }
 
+// Glitch-Figur: kann im Kampf nicht manuell ausgewählt/bewegt werden,
+// bewegt sich stattdessen eigenständig (siehe tryGlitchAutoMove).
+function isGlitchId(id) {
+  const f = FIGURES_CATALOG.find(x => x.id === id);
+  return !!(f && f.isGlitch);
+}
+
 // Titel des gegnerischen Cultwesens, sofern er per QR-Code vom Sender
 // übermittelt wurde (siehe buildLineupPayload/handleScannedLineup). Wird bei
 // jedem Empfang einer Aufstellung neu gesetzt, gilt nur für Nachrichten.
@@ -1432,7 +1448,8 @@ function openFigModal(f) {
   currentFig = f;
   document.getElementById('m-emoji').textContent = f.emoji;
   document.getElementById('m-name').textContent = (f.isKing ? '👑 ' : '') + f.name;
-  document.getElementById('m-size').textContent = 'Größe: ' + sizeLabel(f.size) + ' · ' + (f.moveMode==='slide' ? 'Gleitet' : 'Springt');
+  document.getElementById('m-size').textContent = 'Größe: ' + sizeLabel(f.size) + ' · ' + (f.moveMode==='slide' ? 'Gleitet' : 'Springt')
+    + (f.isGlitch ? ' · Unkontrollierbar (bewegt sich manchmal zufällig)' : '');
   document.getElementById('m-story').textContent = f.story;
 
   const kingBlock = document.getElementById('m-king-emoji-block');
@@ -1563,6 +1580,20 @@ function ingestScannedFigure(data) {
   showToast(`${fig.emoji} ${fig.name} gescannt!`);
 }
 
+// Ein ungültiger/fremder NFC-Tag (kein gültiges Figuren-JSON, z.B. eine
+// EC-Karte oder ein für Cultwars nicht bestimmter Code) schaltet die
+// geheime Glitch-Figur frei, statt nur einen Fehler zu zeigen.
+function ingestInvalidScan() {
+  const alreadyOwned = !!(saveData.collection[GLITCH_ID] && saveData.collection[GLITCH_ID].owned);
+  addFigureToCollection(GLITCH_ID);
+  renderCollection();
+  if (alreadyOwned) {
+    showToast('❌ Ungültiger Tag — nur Datenmüll. (Glitch bereits gesammelt)');
+  } else {
+    showToast('👾 Ungültiger Tag... aus dem Rauschen materialisiert sich Glitch!');
+  }
+}
+
 async function scanNFC() {
   if (!nfcSupported()) {
     showToast('⚠️ NFC wird auf diesem Gerät/Browser nicht unterstützt.\nNutze Chrome auf Android.');
@@ -1582,14 +1613,14 @@ async function scanNFC() {
       if (fig) {
         ingestScannedFigure(fig);
       } else {
-        showToast('❌ Tag erkannt, aber keine gültige Figur-Daten gefunden.');
+        ingestInvalidScan();
       }
       // Nach erfolgreichem Lesen den Scan-Vorgang beenden
       nfcAbortController.abort();
     };
 
     reader.onreadingerror = () => {
-      showToast('❌ Tag konnte nicht gelesen werden. Nochmal versuchen.');
+      ingestInvalidScan();
     };
 
   } catch (err) {
@@ -1883,8 +1914,7 @@ function startBattle() {
   saveSave();
   rebuildFigures();
 
-  updateTurnUI();
-  renderBoard();
+  beginTurn();
 }
 
 function endGame() {
@@ -2000,17 +2030,53 @@ function endTurn() {
   selectedCell = null;
   if (currentTurn === 'player') {
     currentTurn = 'enemy';
-    updateTurnUI();
-    renderBoard();
-    if (!isLocalMultiplayer) setTimeout(enemyTurn, 700);
+    beginTurn();
   } else {
     currentTurn = 'player';
     roundNum++;
     handleRoundEnd();
     if (checkGameOver()) { renderBoard(); return; }
-    updateTurnUI();
-    renderBoard();
+    beginTurn();
   }
+}
+
+// Wird zu Beginn jedes Zuges aufgerufen (Spieler wie Gegner/zweiter
+// Mitspieler). Prüft zuerst, ob die aktive Seite eine Glitch-Figur besitzt,
+// die sich eigenständig bewegt — falls ja, ist der Zug direkt danach vorbei.
+function beginTurn() {
+  updateTurnUI();
+  renderBoard();
+  if (tryGlitchAutoMove(currentTurn)) {
+    endTurn();
+    return;
+  }
+  if (currentTurn === 'enemy' && !isLocalMultiplayer) setTimeout(enemyTurn, 700);
+}
+
+// Glitch-Figuren kann man nicht steuern: zu Beginn des eigenen Zuges besteht
+// eine 50%-Chance, dass sie sich selbst auf ein beliebiges freies Feld
+// bewegt (springt, ignoriert also auch Blockaden). Bewegt sie sich, endet
+// der Zug der besitzenden Seite direkt danach, ohne dass diese noch eine
+// Figur bewegen darf.
+function tryGlitchAutoMove(owner) {
+  const glitches = gameState.pieces.filter(p => p.owner===owner && isGlitchId(p.id));
+  let moved = false;
+  glitches.forEach(gp => {
+    if (Math.random() >= 0.5) return;
+    const occ = new Set();
+    gameState.pieces.filter(x=>x!==gp).forEach(x=>pieceCellsG(x).forEach(([r,c])=>occ.add(r+','+c)));
+    const free = [];
+    for (let r=0;r<boardSize;r++) for (let c=0;c<boardSize;c++) {
+      if (r===gp.anchor[0] && c===gp.anchor[1]) continue;
+      if (!occ.has(r+','+c)) free.push([r,c]);
+    }
+    if (free.length === 0) return;
+    const dest = free[Math.floor(Math.random()*free.length)];
+    doMove(gp.anchor, dest, owner);
+    showToast('👾 Glitch springt eigenmächtig auf ein zufälliges Feld!');
+    moved = true;
+  });
+  return moved;
 }
 
 function renderBoard() {
@@ -2071,7 +2137,7 @@ function handleCellClick(r, c) {
     selectedCell = null;
   }
 
-  if (hit && hit.owner===activeOwner) selectedCell = [...hit.anchor];
+  if (hit && hit.owner===activeOwner && !isGlitchId(hit.id)) selectedCell = [...hit.anchor];
   else selectedCell = null;
   renderBoard();
 }
@@ -2483,8 +2549,7 @@ function launchGameFromExistingPlacement() {
   });
   saveSave();
   rebuildFigures();
-  updateTurnUI();
-  renderBoard();
+  beginTurn();
 }
 
 // Init
