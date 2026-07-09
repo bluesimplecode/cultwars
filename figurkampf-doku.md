@@ -18,7 +18,7 @@
 - Keine manuelle Figuren-Auswahl mehr — alle besessenen Figuren (inkl. Pflicht-König) stehen automatisch zur Platzierung bereit
 - Figuren in den untersten 3 Reihen frei platzieren (inkl. Kollisionsprüfung und Größenberücksichtigung) — der König muss ebenfalls platziert werden
 - Rundenbasiertes Spiel: Spieler zieht, dann KI. Auch der Gegner hat immer einen eigenen König
-- Sieg/Niederlage wird erkannt und in Statistiken gespeichert — fällt der eigene oder gegnerische König, endet die Schlacht sofort, unabhängig von übrigen Figuren
+- Sieg/Niederlage wird erkannt und in Statistiken gespeichert — fällt der eigene oder gegnerische König, endet die Schlacht sofort, unabhängig von übrigen Figuren. Hat eine Seite zu Zugbeginn keinen einzigen gültigen Zug mehr (Zugzwang), verliert sie ebenfalls sofort
 
 **Spielen — Multiplayer**
 - Zwei Rollen: Sender und Host
@@ -27,6 +27,7 @@
 - Host platziert Figuren → scannt den QR-Code des Senders mit der Kamera
 - Beide Aufstellungen werden auf einem Gerät (Host) zusammengeführt, Sender-Figuren werden gespiegelt
 - Beide spielen dann abwechselnd rundenbasiert auf dem Host-Gerät (kein KI-Zug)
+- Nach Schlachtende zeigt der Host automatisch einen Ergebnis-QR-Code; der Sender scannt ihn und übernimmt das Ergebnis in seine eigene Statistik
 
 **Geheime Figur: Glitch**
 - Scannt man einen ungültigen NFC-Tag (kein gültiges Figuren-JSON — z.B. ein fremder Code oder eine EC-Karte), wird statt einer Fehlermeldung die geheime Figur `👾 Glitch` (Katalog-ID 10, fest im Katalog) freigeschaltet
@@ -148,6 +149,9 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Rot eingefärbter Hintergrund-Layer (`bg.png`) wird mit Sammelfortschritt zunehmend sichtbar | ✅ |
 | App-Icons (192/512/maskable/Favicon) aus `icon.png` generiert | ✅ |
 | Geheime Figur `👾 Glitch`: wird bei ungültigem NFC-Scan freigeschaltet, nicht steuerbar, bewegt sich zu Zugbeginn mit 50% Chance selbst und beendet danach sofort den Zug | ✅ |
+| Zugzwang-Prüfung: eine Seite ohne gültigen Zug verliert die Schlacht sofort | ✅ |
+| Kampfanimationen: Zugbewegung (FLIP-Gleiten) und Eliminierung (Schrumpf-/Fade-Geist), respektiert `prefers-reduced-motion` | ✅ |
+| Multiplayer-Ergebnis-Rückkanal: Host zeigt nach Schlachtende automatisch einen Ergebnis-QR-Code, den der Sender scannt und in seine eigene Statistik übernimmt | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
@@ -189,15 +193,15 @@ Gesamtgröße der Haupt-App-Datei: ~250 KB (inkl. eingebetteter QR-Bibliotheken 
 - [x] App-Icon und Splash Screen (`icons/icon-192.png`, `icons/icon-512.png`, `icons/icon-maskable-512.png`, `icons/favicon.png`)
 
 **Mittelfristig**
-- [ ] Multiplayer: Ergebnis-Rückkanal Host → Sender (derzeit kein Rückkanal; Optionen: QR-Code auf Host-Bildschirm, den Sender scannt)
+- [x] Multiplayer: Ergebnis-Rückkanal Host → Sender — nach Schlachtende öffnet sich beim Host automatisch ein Modal (`showMpResultModal()`) mit einem QR-Code (`buildResultPayload()`, Typ `figurkampf-result`); der Sender scannt ihn über den neuen Button "📷 Ergebnis scannen" (`startSenderResultScan()` → `handleScannedResult()`) und bekommt sein Ergebnis in die eigene Statistik übernommen
 - [ ] Platzierungsphase im Multiplayer: Gegner-Startpositionen für den Sender visuell anzeigen (er sieht nur sein eigenes Feld, nicht das des Hosts)
-- [ ] Zugzwang-Prüfung (Spiel endet auch, wenn ein Spieler keine gültigen Züge mehr hat)
+- [x] Zugzwang-Prüfung — `checkStalemate()` läuft bei jedem `beginTurn()`; hat die am Zug befindliche Seite keine gültige Bewegung mehr (`hasAnyLegalMove()`, Glitch-Figuren zählen nicht mit), verliert sie die Schlacht sofort, genau wie beim Königsfall
 - [ ] Figuren-Sync zwischen Admin-Tool und Haupt-App (aktuell manuell per NFC-Tag; könnte via exportiertem JSON-Import oder geteiltem localStorage-Namespace gehen)
 
 **Langfristig / Nice-to-have**
 - [ ] Figuren-Katalog im Admin-Tool per QR-Code exportieren (statt nur NFC), damit auch Geräte ohne NFC neue Figuren erhalten können
 - [ ] Mehrere Sammlungen / Profile (aktuell nur ein `saveData`-Slot)
-- [ ] Animationen beim Kampf (Figur-Eliminierung, Zuganimation)
+- [x] Animationen beim Kampf (Figur-Eliminierung, Zuganimation) — `drawBattleOverlays()` erkennt Figuren anhand von `owner:figurId` über zwei Renders hinweg wieder: Bewegungen gleiten per FLIP-Technik zur neuen Position, geschlagene Figuren bleiben kurz als verblassender/schrumpfender "Geist" (`.piece-eliminated`) an ihrer letzten Position sichtbar. Respektiert `prefers-reduced-motion`
 - [ ] Sound-Effekte (optional per Toggle)
 - [ ] Figuren mit mehr als einem Emoji / animierten Sprites
 

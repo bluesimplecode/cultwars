@@ -517,6 +517,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   }
   @media (prefers-reduced-motion: reduce) {
     body::before, body .header h1 { animation: none !important; }
+    .piece-overlay.piece-eliminated { animation: none !important; opacity: 0 !important; transition: none !important; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { position: relative; background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; transition: background 2.5s ease, color 2.5s ease; }
@@ -612,6 +613,8 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .piece-overlay.player { outline: 2px solid rgba(var(--player-rgb),0.7); background: rgba(var(--player-rgb),0.08); }
   .piece-overlay.enemy  { outline: 2px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.06); }
   .piece-overlay.sel    { outline: 2px solid var(--accent2) !important; background: rgba(var(--accent-rgb),0.22) !important; }
+  .piece-overlay.piece-eliminated { animation: pieceEliminate 0.42s ease-out forwards; z-index: 1; }
+  @keyframes pieceEliminate { 0% { transform: scale(1) rotate(0deg); opacity: 1; } 55% { transform: scale(1.2) rotate(10deg); opacity: 0.9; } 100% { transform: scale(0.1) rotate(28deg); opacity: 0; } }
   .player-tag { display: flex; align-items: center; gap: 8px; padding: 10px 16px; }
   .player-dot { width: 10px; height: 10px; border-radius: 50%; }
   .turn-info { text-align: center; font-size: 13px; color: var(--text2); padding: 8px 16px; }
@@ -921,6 +924,21 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
         <div style="font-size:12px; color:var(--text2); margin-top:12px;">Halte den Host-Bildschirm vor diesen QR-Code</div>
       </div>
       <button class="action-btn" id="sender-show-qr-btn" onclick="showSenderQR()">📱 QR-Code anzeigen</button>
+
+      <!-- Ergebnis-Rückkanal: sobald der Host die Schlacht beendet hat, zeigt er
+           einen Ergebnis-QR-Code, den der Sender hier scannen kann. -->
+      <div id="sender-result-wait" style="display:none; margin-top:4px;">
+        <div style="font-size:12px; color:var(--text2); margin:4px 0 12px;">Sobald der Host die Schlacht beendet hat, zeigt er dir einen Ergebnis-QR-Code. Scanne ihn, damit auch deine Statistik aktualisiert wird.</div>
+        <div id="sender-result-scan-wrap" style="display:none;">
+          <div style="position:relative; border-radius:12px; overflow:hidden; background:#000; margin:0 0 12px;">
+            <video id="sender-result-video" autoplay playsinline muted style="width:100%; display:block; max-height:280px; object-fit:cover;"></video>
+            <div style="position:absolute; inset:0; border:2px solid rgba(16,185,129,0.6); border-radius:12px; pointer-events:none;"></div>
+          </div>
+          <div style="font-size:12px; color:var(--text2); text-align:center; margin-bottom:12px;" id="sender-result-status">Suche nach QR-Code...</div>
+        </div>
+        <button class="action-btn" id="sender-result-scan-btn" onclick="startSenderResultScan()">📷 Ergebnis scannen</button>
+      </div>
+
       <button class="action-btn secondary" onclick="closeMpFlow()">Abbrechen</button>
     </div>
 
@@ -965,6 +983,20 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
       </div>
 
     </div>
+  </div>
+</div>
+
+<!-- Ergebnis-Rückkanal (Host → Sender): erscheint automatisch beim Host, sobald
+     eine lokale Multiplayer-Schlacht endet, mit einem QR-Code für den Sender. -->
+<div class="modal-overlay" id="mp-result-modal" onclick="closeMpResultModal(event)">
+  <div class="modal" id="mp-result-inner">
+    <div class="modal-handle"></div>
+    <div style="font-size:18px; font-weight:700; margin-bottom:8px;" id="mp-result-title">Schlacht beendet</div>
+    <div style="font-size:13px; color:var(--text2); margin-bottom:16px;">Zeig dem Sender diesen QR-Code, damit auch seine Statistik das Ergebnis erhält.</div>
+    <div style="text-align:center; padding:8px 0 16px;">
+      <div id="mp-result-qr-canvas" style="display:inline-block; background:#fff; padding:12px; border-radius:12px;"></div>
+    </div>
+    <button class="action-btn" onclick="closeMpResultModal()">Fertig</button>
   </div>
 </div>
 
@@ -1728,6 +1760,61 @@ function drawOverlays(outerEl, piecesToDraw, selAnchor, moveDests) {
   });
 }
 
+const PREFERS_REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Wie drawOverlays, aber für das Kampf-Board: animiert Bewegungen (Gleit-Übergang
+// per FLIP-Technik) und lässt geschlagene Figuren kurz als verblassenden "Geist"
+// an ihrer letzten Position stehen, statt sie abrupt verschwinden zu lassen.
+// Figuren werden dafür über `owner:figurId` als stabilen Schlüssel zwischen zwei
+// aufeinanderfolgenden renderBoard()-Aufrufen wiedererkannt.
+function drawBattleOverlays(outerEl, piecesToDraw, selAnchor, moveDests) {
+  const prevEls = new Map();
+  outerEl.querySelectorAll('.piece-overlay[data-pkey]').forEach(el => {
+    prevEls.set(el.dataset.pkey, el);
+  });
+  const newKeys = new Set(piecesToDraw.map(p => p.owner+':'+p.id));
+
+  // Figuren, die es vorher gab, jetzt aber nicht mehr → wurden geschlagen.
+  // Als Geist an alter Position stehen lassen und animiert entfernen.
+  prevEls.forEach((el, pkey) => {
+    if (newKeys.has(pkey)) return;
+    el.removeAttribute('data-pkey');
+    el.classList.add('piece-eliminated');
+    setTimeout(() => el.remove(), 420);
+  });
+
+  outerEl.querySelectorAll('.piece-overlay:not(.piece-eliminated)').forEach(el=>el.remove());
+
+  piecesToDraw.forEach(p => {
+    const f = FIGURES.find(x=>x.id===p.id);
+    const span = figSpan(f||{size:1});
+    const [ar,ac] = p.anchor;
+    const isSel = selAnchor && selAnchor[0]===ar && selAnchor[1]===ac;
+    const pkey = p.owner+':'+p.id;
+    const left = ac*CELL_PX, top = ar*CELL_PX;
+    const ov = document.createElement('div');
+    ov.className = 'piece-overlay ' + p.owner + (isSel?' sel':'') + (f && f.isKing ? ' king-glow' : '');
+    ov.dataset.pkey = pkey;
+    ov.style.cssText = `left:${left}px;top:${top}px;width:${span*CELL_PX}px;height:${span*CELL_PX}px;font-size:${Math.round(span*CELL_PX*0.58)}px;line-height:1;`;
+    ov.textContent = p.emoji;
+    outerEl.appendChild(ov);
+
+    const prev = prevEls.get(pkey);
+    if (prev && !PREFERS_REDUCED_MOTION) {
+      const prevLeft = parseFloat(prev.style.left), prevTop = parseFloat(prev.style.top);
+      if (prevLeft !== left || prevTop !== top) {
+        // FLIP: an alter Position starten (ohne Übergang), dann im nächsten Frame
+        // zur neuen Position gleiten lassen.
+        ov.style.transform = `translate(${prevLeft-left}px, ${prevTop-top}px)`;
+        requestAnimationFrame(() => {
+          ov.style.transition = 'transform 0.28s cubic-bezier(.4,0,.2,1)';
+          ov.style.transform = 'translate(0,0)';
+        });
+      }
+    }
+  });
+}
+
 // --- PLACEMENT PHASE ---
 function launchGame() {
   // Keine manuelle Figuren-Auswahl mehr — Solo wie Multiplayer nehmen
@@ -2001,6 +2088,29 @@ function updateTurnUI() {
   label.textContent = `Runde ${roundNum}`;
 }
 
+// Ergebnis der letzten beendeten Schlacht ('playerWin' | 'enemyWin' | 'draw') —
+// wird im lokalen Multiplayer für den Ergebnis-Rückkanal an den Sender gebraucht
+// (siehe buildResultPayload/showMpResultModal).
+let lastGameResult = null;
+
+// Zentrale Stelle, an der eine Schlacht als beendet gilt: schreibt Statistiken
+// genau einmal fest (gameOverHandled schützt vor doppeltem Zählen, falls
+// checkGameOver/checkStalemate mehrfach triggern) und öffnet im lokalen
+// Multiplayer automatisch den Ergebnis-QR-Code für den Sender.
+function declareResult(outcome, message) {
+  if (gameOverHandled) return;
+  gameOverHandled = true;
+  lastGameResult = outcome;
+  saveData.stats.gamesPlayed += 1;
+  if (outcome === 'draw') saveData.stats.draws += 1;
+  else if (outcome === 'playerWin') saveData.stats.wins += 1;
+  else saveData.stats.losses += 1;
+  showToast(message);
+  saveSave();
+  renderStats();
+  if (isLocalMultiplayer) showMpResultModal();
+}
+
 function checkGameOver() {
   // Verloren ist, wer entweder keine Figuren mehr hat ODER dessen König gefallen ist —
   // der König-Tod entscheidet die Schlacht sofort, unabhängig von übrigen Figuren.
@@ -2009,20 +2119,32 @@ function checkGameOver() {
   const enemyLost = !gameState.pieces.some(p=>p.owner==='enemy')
     || !gameState.pieces.some(p=>p.owner==='enemy' && isKingId(p.id));
   if (playerLost || enemyLost) {
-    if (!gameOverHandled) {
-      gameOverHandled = true;
-      saveData.stats.gamesPlayed += 1;
-      // Ein Feld-Schrumpfen kann ausnahmsweise beide Könige gleichzeitig schlagen
-      // (z.B. wenn beide im äußeren Ring stehen) — das zählt als Unentschieden.
-      if (playerLost && enemyLost) { saveData.stats.draws += 1; showToast('🌀 Beide Cultwesen sind gleichzeitig gefallen — Unentschieden!'); }
-      else if (enemyLost) { saveData.stats.wins += 1; showToast(`👑 ${kingDisplayName('enemy')} des Gegners ist gefallen — du hast gewonnen!`); }
-      else { saveData.stats.losses += 1; showToast(`💀 Dein ${kingDisplayName('player')} ist gefallen — du hast verloren!`); }
-      saveSave();
-      renderStats();
-    }
+    // Ein Feld-Schrumpfen kann ausnahmsweise beide Könige gleichzeitig schlagen
+    // (z.B. wenn beide im äußeren Ring stehen) — das zählt als Unentschieden.
+    if (playerLost && enemyLost) declareResult('draw', '🌀 Beide Cultwesen sind gleichzeitig gefallen — Unentschieden!');
+    else if (enemyLost) declareResult('playerWin', `👑 ${kingDisplayName('enemy')} des Gegners ist gefallen — du hast gewonnen!`);
+    else declareResult('enemyWin', `💀 Dein ${kingDisplayName('player')} ist gefallen — du hast verloren!`);
     return true;
   }
   return false;
+}
+
+// Zugzwang-Prüfung: hat `owner` keine einzige gültige Bewegung mehr (unter
+// allen eigenen, manuell steuerbaren Figuren — Glitch zählt nicht mit, da sie
+// nie manuell bewegt werden kann, siehe tryGlitchAutoMove), verliert diese
+// Seite die Schlacht sofort, genau wie beim Fall des eigenen Cultwesens.
+function hasAnyLegalMove(owner) {
+  return gameState.pieces.some(p =>
+    p.owner===owner && !isGlitchId(p.id) && getMovesFor(p.anchor, owner).length > 0
+  );
+}
+
+function checkStalemate(owner) {
+  if (gameOverHandled) return false;
+  if (hasAnyLegalMove(owner)) return false;
+  if (owner === 'player') declareResult('enemyWin', '🧊 Du hast keinen gültigen Zug mehr — du hast verloren!');
+  else declareResult('playerWin', '🧊 Der Gegner hat keinen gültigen Zug mehr — du hast gewonnen!');
+  return true;
 }
 
 function endTurn() {
@@ -2050,6 +2172,7 @@ function beginTurn() {
     endTurn();
     return;
   }
+  if (checkStalemate(currentTurn)) { renderBoard(); return; }
   if (currentTurn === 'enemy' && !isLocalMultiplayer) setTimeout(enemyTurn, 700);
 }
 
@@ -2110,7 +2233,7 @@ function renderBoard() {
     cell.onclick = ()=>handleCellClick(r,c);
     board.appendChild(cell);
   }
-  drawOverlays(outer, gameState.pieces, selectedCell, moves);
+  drawBattleOverlays(outer, gameState.pieces, selectedCell, moves);
 }
 
 function pieceCellsG(p) {
@@ -2263,11 +2386,14 @@ function closeMpFlow() {
   document.getElementById('mp-host-flow').style.display = 'none';
   document.getElementById('sender-qr-wrap').style.display = 'none';
   document.getElementById('sender-show-qr-btn').style.display = 'block';
+  document.getElementById('sender-result-wait').style.display = 'none';
+  document.getElementById('sender-result-scan-wrap').style.display = 'none';
+  document.getElementById('sender-result-scan-btn').style.display = 'block';
   document.getElementById('host-lineup').style.display = 'block';
   document.getElementById('host-nfc-wait').style.display = 'none';
   document.getElementById('host-scan-wrap').style.display = 'none';
   document.getElementById('host-scan-btn').style.display = 'block';
-  stopHostScan();
+  stopScan();
   mpMode = null;
   document.getElementById('game-menu').style.display = 'block';
 }
@@ -2363,19 +2489,25 @@ function showSenderQR() {
     console.warn('QR-Code konnte nicht erzeugt werden:', e);
     wrap.innerHTML = '<div style="color:var(--red); font-size:13px;">⚠️ QR-Code-Erzeugung fehlgeschlagen (Aufstellung evtl. zu groß).</div>';
   }
+
+  // Sobald der eigene QR-Code steht, kann der Sender direkt weiter zum
+  // Ergebnis-Rückkanal — er scannt dort, sobald der Host fertig ist.
+  document.getElementById('sender-result-wait').style.display = 'block';
 }
 
 // ---------------------------------------------------------------
-// HOST: QR-Code per Kamera scannen
+// QR-Code per Kamera scannen (generisch)
 // Zwei Engines: native BarcodeDetector (schnell, nur Chrome/Android)
 // und jsQR als Fallback (reines JS, funktioniert in jedem Browser mit Kamera).
+// Wird sowohl vom Host (Aufstellung scannen) als auch vom Sender
+// (Ergebnis-Rückkanal, siehe handleScannedResult) genutzt.
 // ---------------------------------------------------------------
-let hostScanStream = null;
-let hostScanRAF = null;
-let hostScanDetector = null;     // BarcodeDetector-Instanz, falls verfügbar
-let hostScanCanvas = null;       // Hilfs-Canvas für jsQR (liest Pixel aus dem Video)
-let hostScanCtx = null;
-let hostScanEngine = null;       // 'native' | 'jsqr'
+let scanStream = null;
+let scanRAF = null;
+let scanDetector = null;     // BarcodeDetector-Instanz, falls verfügbar
+let scanCanvas = null;       // Hilfs-Canvas für jsQR (liest Pixel aus dem Video)
+let scanCtx = null;
+let scanEngine = null;       // 'native' | 'jsqr'
 
 function nativeBarcodeDetectorSupported() {
   return typeof BarcodeDetector !== 'undefined';
@@ -2385,18 +2517,21 @@ function jsQRSupported() {
   return typeof jsQR === 'function';
 }
 
-async function startHostScan() {
-  const video = document.getElementById('host-scan-video');
-  const statusEl = document.getElementById('host-scan-status');
-  document.getElementById('host-scan-btn').style.display = 'none';
-  document.getElementById('host-scan-wrap').style.display = 'block';
+// onPayload(raw, statusEl) wird bei jedem erkannten QR-Code aufgerufen und muss
+// true zurückgeben, wenn die Daten gültig waren (stoppt den Scan) — bei false
+// wird automatisch weitergescannt (z.B. weil der QR-Code nicht dazugehört).
+async function startQRScan(videoId, statusId, btnId, wrapId, onPayload) {
+  const video = document.getElementById(videoId);
+  const statusEl = document.getElementById(statusId);
+  document.getElementById(btnId).style.display = 'none';
+  document.getElementById(wrapId).style.display = 'block';
 
   // Engine wählen: nativer Detector bevorzugt (schneller, läuft außerhalb des Hauptthreads),
   // sonst jsQR als Fallback für Firefox/Safari/Desktop.
   if (nativeBarcodeDetectorSupported()) {
-    hostScanEngine = 'native';
+    scanEngine = 'native';
   } else if (jsQRSupported()) {
-    hostScanEngine = 'jsqr';
+    scanEngine = 'jsqr';
     statusEl.textContent = 'Suche nach QR-Code... (Kompatibilitätsmodus)';
   } else {
     statusEl.textContent = '⚠️ QR-Scan wird auf diesem Browser nicht unterstützt.';
@@ -2404,22 +2539,22 @@ async function startHostScan() {
   }
 
   try {
-    hostScanStream = await navigator.mediaDevices.getUserMedia({
+    scanStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment' }
     });
-    video.srcObject = hostScanStream;
+    video.srcObject = scanStream;
     await video.play();
 
-    if (hostScanEngine === 'native') {
-      hostScanDetector = new BarcodeDetector({ formats: ['qr_code'] });
+    if (scanEngine === 'native') {
+      scanDetector = new BarcodeDetector({ formats: ['qr_code'] });
     } else {
       // jsQR braucht die Pixel als ImageData — dafür rendern wir jeden Frame
       // unsichtbar auf ein Canvas und lesen es dort aus.
-      hostScanCanvas = document.createElement('canvas');
-      hostScanCtx = hostScanCanvas.getContext('2d', { willReadFrequently: true });
+      scanCanvas = document.createElement('canvas');
+      scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
     }
     statusEl.textContent = statusEl.textContent.includes('Such') ? statusEl.textContent : 'Suche nach QR-Code...';
-    scanLoop(video, statusEl);
+    scanLoop(video, statusEl, onPayload);
   } catch (err) {
     console.warn('Kamera-Zugriff fehlgeschlagen:', err);
     if (err.name === 'NotAllowedError') {
@@ -2430,34 +2565,39 @@ async function startHostScan() {
   }
 }
 
-async function scanLoop(video, statusEl) {
-  if (!hostScanStream) return; // Scan wurde inzwischen gestoppt
+async function scanLoop(video, statusEl, onPayload) {
+  if (!scanStream) return; // Scan wurde inzwischen gestoppt
   try {
     let raw = null;
 
-    if (hostScanEngine === 'native') {
-      const barcodes = await hostScanDetector.detect(video);
+    if (scanEngine === 'native') {
+      const barcodes = await scanDetector.detect(video);
       if (barcodes.length > 0) raw = barcodes[0].rawValue;
-    } else if (hostScanEngine === 'jsqr') {
+    } else if (scanEngine === 'jsqr') {
       // Video-Frame auf das Hilfs-Canvas zeichnen und als ImageData an jsQR übergeben.
       if (video.videoWidth > 0) {
-        hostScanCanvas.width = video.videoWidth;
-        hostScanCanvas.height = video.videoHeight;
-        hostScanCtx.drawImage(video, 0, 0, hostScanCanvas.width, hostScanCanvas.height);
-        const imageData = hostScanCtx.getImageData(0, 0, hostScanCanvas.width, hostScanCanvas.height);
+        scanCanvas.width = video.videoWidth;
+        scanCanvas.height = video.videoHeight;
+        scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
+        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
         const result = jsQR(imageData.data, imageData.width, imageData.height);
         if (result) raw = result.data;
       }
     }
 
-    if (raw) {
-      handleScannedLineup(raw, statusEl);
-      return; // Loop beenden, Ergebnis wurde verarbeitet
-    }
+    if (raw && onPayload(raw, statusEl)) return; // Loop beenden, Daten wurden verarbeitet
   } catch(e) {
     // Einzelne fehlgeschlagene Frames ignorieren und weiter versuchen
   }
-  hostScanRAF = requestAnimationFrame(() => scanLoop(video, statusEl));
+  scanRAF = requestAnimationFrame(() => scanLoop(video, statusEl, onPayload));
+}
+
+function startHostScan() {
+  startQRScan('host-scan-video', 'host-scan-status', 'host-scan-btn', 'host-scan-wrap', handleScannedLineup);
+}
+
+function startSenderResultScan() {
+  startQRScan('sender-result-video', 'sender-result-status', 'sender-result-scan-btn', 'sender-result-scan-wrap', handleScannedResult);
 }
 
 function handleScannedLineup(raw, statusEl) {
@@ -2466,17 +2606,15 @@ function handleScannedLineup(raw, statusEl) {
     data = JSON.parse(raw);
   } catch(e) {
     statusEl.textContent = '❌ QR-Code enthält keine gültigen Daten. Weiter scannen...';
-    hostScanRAF = requestAnimationFrame(() => scanLoop(document.getElementById('host-scan-video'), statusEl));
-    return;
+    return false;
   }
   if (!data || data.type !== 'figurkampf-lineup' || !Array.isArray(data.pieces)) {
     statusEl.textContent = '❌ QR-Code gehört nicht zu FigurKampf. Weiter scannen...';
-    hostScanRAF = requestAnimationFrame(() => scanLoop(document.getElementById('host-scan-video'), statusEl));
-    return;
+    return false;
   }
 
   statusEl.textContent = '✅ Aufstellung empfangen!';
-  stopHostScan();
+  stopScan();
 
   // Gegnerische Aufstellung (vom Sender) in die eigene Platzierung übernehmen.
   // Eigene Figuren bleiben unten, gegnerische werden oben gespiegelt platziert.
@@ -2509,6 +2647,7 @@ function handleScannedLineup(raw, statusEl) {
 
   showToast('📡 Aufstellung des Senders empfangen!');
   setTimeout(() => { closeMpFlow(); launchGameFromExistingPlacement(); }, 800);
+  return true;
 }
 
 // Spiegelt eine Anker-Position vertikal, damit die gegnerische Aufstellung
@@ -2518,16 +2657,89 @@ function mirrorAnchorForEnemy([r, c], senderBoardSize) {
   return [n - 1 - r, c];
 }
 
-function stopHostScan() {
-  if (hostScanRAF) { cancelAnimationFrame(hostScanRAF); hostScanRAF = null; }
-  if (hostScanStream) {
-    hostScanStream.getTracks().forEach(t => t.stop());
-    hostScanStream = null;
+// Verarbeitet den vom Host gezeigten Ergebnis-QR-Code (siehe buildResultPayload)
+// und trägt das Ergebnis aus Sender-Sicht in die eigene Statistik ein — ohne
+// diesen Rückkanal hätte der Sender sonst gar keine Möglichkeit zu erfahren,
+// wie die Schlacht ausging, da sie komplett auf dem Host-Gerät läuft.
+function handleScannedResult(raw, statusEl) {
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch(e) {
+    statusEl.textContent = '❌ QR-Code enthält keine gültigen Daten. Weiter scannen...';
+    return false;
   }
-  hostScanDetector = null;
-  hostScanCanvas = null;
-  hostScanCtx = null;
-  hostScanEngine = null;
+  if (!data || data.type !== 'figurkampf-result' || !['win','loss','draw'].includes(data.outcome)) {
+    statusEl.textContent = '❌ QR-Code gehört nicht zum Ergebnis dieser Schlacht. Weiter scannen...';
+    return false;
+  }
+
+  statusEl.textContent = '✅ Ergebnis empfangen!';
+  stopScan();
+
+  saveData.stats.gamesPlayed += 1;
+  if (data.outcome === 'win') { saveData.stats.wins += 1; showToast('👑 Der Host ist gefallen — du hast gewonnen!'); }
+  else if (data.outcome === 'loss') { saveData.stats.losses += 1; showToast('💀 Dein Cultwesen ist beim Host gefallen — du hast verloren!'); }
+  else { saveData.stats.draws += 1; showToast('🌀 Unentschieden!'); }
+  saveSave();
+  renderStats();
+
+  setTimeout(() => closeMpFlow(), 800);
+  return true;
+}
+
+function stopScan() {
+  if (scanRAF) { cancelAnimationFrame(scanRAF); scanRAF = null; }
+  if (scanStream) {
+    scanStream.getTracks().forEach(t => t.stop());
+    scanStream = null;
+  }
+  scanDetector = null;
+  scanCanvas = null;
+  scanCtx = null;
+  scanEngine = null;
+}
+
+// ---------------------------------------------------------------
+// ERGEBNIS-RÜCKKANAL: Der Host zeigt nach der Schlacht einen Ergebnis-QR-Code,
+// den der Sender scannen kann (siehe handleScannedResult), damit auch seine
+// eigene Statistik das Kampfergebnis erhält.
+// ---------------------------------------------------------------
+
+// Auf dem Host-Gerät ist 'player' der Host selbst und 'enemy' die per QR-Code
+// empfangene Sender-Aufstellung (siehe launchGameFromExistingPlacement) — das
+// Host-seitige lastGameResult muss also in die Sender-Perspektive übersetzt werden.
+function buildResultPayload() {
+  let outcome = 'draw';
+  if (lastGameResult === 'playerWin') outcome = 'loss';   // Host gewinnt → Sender verliert
+  else if (lastGameResult === 'enemyWin') outcome = 'win'; // Sender-Figuren gewinnen
+  return { type: 'figurkampf-result', outcome };
+}
+
+function showMpResultModal() {
+  const title = lastGameResult === 'draw' ? '🌀 Unentschieden'
+    : lastGameResult === 'playerWin' ? '👑 Du hast gewonnen'
+    : '💀 Du hast verloren';
+  document.getElementById('mp-result-title').textContent = title;
+  const canvas = document.getElementById('mp-result-qr-canvas');
+  canvas.innerHTML = '';
+  try {
+    new QRCode(canvas, {
+      text: JSON.stringify(buildResultPayload()),
+      width: 240,
+      height: 240,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    console.warn('Ergebnis-QR-Code konnte nicht erzeugt werden:', e);
+    canvas.innerHTML = '<div style="color:var(--red); font-size:12px;">⚠️ QR-Code konnte nicht erzeugt werden.</div>';
+  }
+  document.getElementById('mp-result-modal').classList.add('open');
+}
+
+function closeMpResultModal(e) {
+  if (e && e.target !== document.getElementById('mp-result-modal')) return;
+  document.getElementById('mp-result-modal').classList.remove('open');
 }
 
 // Startet die Schlacht direkt mit der bereits vorhandenen `pieces`-Aufstellung
