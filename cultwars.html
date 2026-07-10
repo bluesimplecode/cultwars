@@ -1139,7 +1139,10 @@ function importSaveDataFile(input) {
       return;
     }
     if (!confirm('Aktuellen Speicherstand wirklich mit der importierten Datei überschreiben?')) return;
-    if (!data.customFigures) data.customFigures = []; // ältere Exporte kannten dieses Feld noch nicht
+    // ältere Exporte kannten dieses Feld noch nicht — und ein manuell
+    // bearbeiteter, nicht-Array-Wert würde mergeCustomFiguresIntoCatalog()
+    // zum Absturz bringen, nachdem saveData schon überschrieben wurde.
+    if (!Array.isArray(data.customFigures)) data.customFigures = [];
     saveData = data;
     mergeCustomFiguresIntoCatalog();
     saveSave();
@@ -1361,6 +1364,10 @@ let gameState = null;
 let selectedCell = null;
 
 function goPage(name, btn) {
+  // Falls gerade ein QR-Scan läuft (Kamera aktiv) und der Nutzer stattdessen
+  // über die Bottom-Nav wegnavigiert statt "Abbrechen" zu tippen, muss die
+  // Kamera trotzdem gestoppt werden.
+  stopScan();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
@@ -1848,7 +1855,9 @@ function launchGame() {
     // Der Gegner braucht ebenfalls zwingend einen eigenen König.
     let ec = 0;
     const enemyKing = FIGURES_CATALOG.find(f => f.isKing);
-    const enemyRest = FIGURES.filter(f=>!selectedFigs.has(f.id) && !f.isKing).slice(0,3);
+    // Glitch ist eine geheime Figur, die nur über einen ungültigen NFC-Scan
+    // entdeckt werden soll — die KI darf sie daher nie vorher zeigen.
+    const enemyRest = FIGURES.filter(f=>!selectedFigs.has(f.id) && !f.isKing && !f.isGlitch).slice(0,3);
     const enemyRoster = enemyKing ? [enemyKing, ...enemyRest] : enemyRest;
     enemyRoster.forEach(f => {
       const span = figSpan(f);
@@ -2399,12 +2408,16 @@ function closeMpFlow() {
 }
 
 let mpMode = null; // null | 'sender' | 'host' — steuert, ob die Platzierungsphase im Multiplayer-Sender-Modus läuft
+// Verhindert, dass ein erneutes Scannen desselben (noch sichtbaren) Ergebnis-QR-Codes
+// die Statistik des Senders ein zweites Mal für dieselbe Schlacht hochzählt.
+let mpResultProcessed = false;
 
 function mpRole(role) {
   if (role === 'sender') {
     // Sender muss zuerst seine eigene Aufstellung machen, genau wie im Solo-Modus.
     // Dafür schließen wir das Modal und starten die normale Platzierungsphase,
     // aber im "Sender-Modus" (zeigt am Ende "Weiter zum QR-Code" statt "Kampf beginnen").
+    mpResultProcessed = false;
     document.getElementById('mp-modal').classList.remove('open');
     document.getElementById('mp-role-select').style.display = 'block';
     mpMode = 'sender';
@@ -2612,6 +2625,14 @@ function handleScannedLineup(raw, statusEl) {
     statusEl.textContent = '❌ QR-Code gehört nicht zu FigurKampf. Weiter scannen...';
     return false;
   }
+  // data.pieces muss ein flaches Zahlen-Array [id,row,col,...] sein (siehe
+  // buildLineupPayload). Ein älteres Objekt-Format oder eine beschädigte
+  // Länge würde sonst stillschweigend als "lauter unbekannte Figuren"
+  // interpretiert und der Kampf ginge sofort verloren — lieber klar ablehnen.
+  if (data.pieces.length % 3 !== 0 || !data.pieces.every(x => typeof x === 'number' && Number.isFinite(x))) {
+    statusEl.textContent = '❌ Aufstellung hat ein unbekanntes Format (z.B. veraltete App-Version beim Sender). Weiter scannen...';
+    return false;
+  }
 
   statusEl.textContent = '✅ Aufstellung empfangen!';
   stopScan();
@@ -2673,6 +2694,15 @@ function handleScannedResult(raw, statusEl) {
     statusEl.textContent = '❌ QR-Code gehört nicht zum Ergebnis dieser Schlacht. Weiter scannen...';
     return false;
   }
+  if (mpResultProcessed) {
+    // Derselbe (noch sichtbare) Ergebnis-QR-Code wurde bereits ausgewertet —
+    // ohne diese Sperre würde ein zweiter Scan die Statistik doppelt zählen.
+    statusEl.textContent = '✅ Ergebnis wurde bereits verarbeitet.';
+    stopScan();
+    setTimeout(() => closeMpFlow(), 800);
+    return true;
+  }
+  mpResultProcessed = true;
 
   statusEl.textContent = '✅ Ergebnis empfangen!';
   stopScan();
