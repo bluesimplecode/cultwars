@@ -122,9 +122,9 @@
         <div class="panel">
           <div class="panel-title">Basisdaten</div>
 
-          <label>Katalog-ID (11–33 = fester Basis-Katalog)</label>
+          <label>Katalog-ID (1–33 = fester Basis-Katalog)</label>
           <div style="display:flex; gap:8px;">
-            <input type="number" id="f-catalog-id" placeholder="leer = reine NFC-Figur" min="11" max="33" oninput="updatePayload()" style="flex:1;">
+            <input type="number" id="f-catalog-id" placeholder="leer = reine NFC-Figur" min="1" max="33" oninput="updatePayload()" style="flex:1;">
             <button type="button" class="btn secondary" style="width:auto; margin:0; padding:9px 12px;" onclick="suggestNextCatalogId()">Nächste frei</button>
           </div>
           <div class="status" id="catalog-id-hint" style="margin-top:4px;">IDs 1–33 sind für den festen Basis-Katalog reserviert (33 Figuren gesamt). ID 1 (Cultwesen) &amp; ID 8 (Glitch) sind bereits fest in cultwars.html vergeben. Leer lassen = normale per-NFC-Sammelfigur außerhalb des Katalogs.</div>
