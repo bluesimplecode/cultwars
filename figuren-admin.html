@@ -116,6 +116,7 @@
 
   <!-- CREATE TAB -->
   <div id="tab-create">
+    <div class="status" id="edit-mode-banner" style="display:none; margin-bottom:12px; color:var(--accent2); font-weight:700;"></div>
     <div class="grid">
       <!-- Left: Editor -->
       <div>
@@ -137,7 +138,7 @@
           <input type="text" id="f-emoji" placeholder="oder eigenes Emoji eingeben" maxlength="2" oninput="selectCustomEmoji()" style="margin-top:6px;">
 
           <label>Größe (Felder)</label>
-          <div class="tag-list">
+          <div class="tag-list" id="size-tag-list">
             <div class="tag sel" onclick="selectSize(this,'1')">1×1 (1 Feld)</div>
             <div class="tag" onclick="selectSize(this,'4')">2×2 (4 Felder)</div>
             <div class="tag" onclick="selectSize(this,'9')">3×3 (9 Felder)</div>
@@ -145,7 +146,7 @@
           <input type="hidden" id="f-size" value="1">
 
           <label>Bewegungsart</label>
-          <div class="tag-list">
+          <div class="tag-list" id="movemode-tag-list">
             <div class="tag msel" onclick="selectMoveMode(this,'jump')">🦘 Springt (ignoriert andere Figuren)</div>
             <div class="tag" onclick="selectMoveMode(this,'slide')">🧱 Gleitet (wird blockiert)</div>
           </div>
@@ -202,9 +203,10 @@
     </div>
 
     <div class="grid" style="margin-top:12px;">
-      <button class="btn secondary" onclick="saveFigure()">💾 Zur Bibliothek speichern</button>
+      <button class="btn secondary" id="save-btn" onclick="saveFigure()">💾 Zur Bibliothek speichern</button>
       <button class="btn" onclick="writeNFC()">📡 Auf NFC-Tag schreiben</button>
     </div>
+    <button class="btn secondary" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none;">✕ Bearbeitung abbrechen</button>
     <div class="status" id="create-status"></div>
   </div>
 
@@ -355,21 +357,83 @@ const CATALOG_ID_MAX = 33;
 // dort je wieder ändern — der Admin-Generator kennt cultwars.html nicht.
 const RESERVED_CATALOG_IDS = [1, 8];
 
+// Während einer Bearbeitung (siehe editFig) hält dies die ursprüngliche ID der
+// bearbeiteten Figur, damit sie beim Speichern ersetzt statt dupliziert wird.
+let editingId = null;
+
 function buildFigureData() {
   const catalogId = parseInt(document.getElementById('f-catalog-id').value, 10);
+  const original = editingId !== null ? library.find(f => f.id === editingId) : null;
   return {
-    id: Number.isInteger(catalogId) ? catalogId : Date.now(),
+    id: Number.isInteger(catalogId) ? catalogId : (original ? original.id : Date.now()),
     name: document.getElementById('f-name').value || 'Unbenannt',
     emoji: selectedEmoji,
     size: parseInt(document.getElementById('f-size').value) || 1,
     moveMode: document.getElementById('f-move-mode').value || 'jump',
     story: document.getElementById('f-story').value || '',
     move: movePattern,
-    kills: 0,
-    uses: 0,
-    new: true,
-    created: new Date().toISOString()
+    kills: original ? original.kills : 0,
+    uses: original ? original.uses : 0,
+    new: original ? original.new : true,
+    created: original ? original.created : new Date().toISOString()
   };
+}
+
+function setSizeUI(size) {
+  const idx = {1:0, 4:1, 9:2}[Number(size)] ?? 0;
+  selectSize(document.querySelectorAll('#size-tag-list .tag')[idx], String(size));
+}
+
+function setMoveModeUI(mode) {
+  const idx = mode === 'slide' ? 1 : 0;
+  selectMoveMode(document.querySelectorAll('#movemode-tag-list .tag')[idx], mode);
+}
+
+// Lädt eine gespeicherte Figur zurück ins Formular, damit saveFigure() sie
+// aktualisiert statt eine neue Kopie anzulegen.
+function editFig(id) {
+  const fig = library.find(f => f.id === id);
+  if (!fig) return;
+  editingId = id;
+  switchTab('create', document.querySelectorAll('.tabs .tab')[0]);
+  document.getElementById('f-catalog-id').value = fig.id;
+  document.getElementById('f-name').value = fig.name;
+  document.getElementById('f-story').value = fig.story || '';
+  document.getElementById('f-emoji').value = fig.emoji;
+  selectedEmoji = fig.emoji;
+  document.querySelectorAll('.ep').forEach(x => x.classList.toggle('sel', x.textContent === fig.emoji));
+  movePattern = fig.move.map(row => [...row]);
+  setSizeUI(fig.size);
+  setMoveModeUI(fig.moveMode);
+  initMoveGrid();
+  updatePreview();
+  const banner = document.getElementById('edit-mode-banner');
+  banner.style.display = 'block';
+  banner.textContent = `✏️ Bearbeite: ${fig.emoji} ${fig.name} (ID ${fig.id}) — Speichern überschreibt diese Figur.`;
+  document.getElementById('save-btn').textContent = '💾 Änderungen speichern';
+  document.getElementById('cancel-edit-btn').style.display = 'block';
+}
+
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('edit-mode-banner').style.display = 'none';
+  document.getElementById('save-btn').textContent = '💾 Zur Bibliothek speichern';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
+  resetForm();
+}
+
+function resetForm() {
+  document.getElementById('f-catalog-id').value = '';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-story').value = '';
+  document.getElementById('f-emoji').value = '';
+  selectedEmoji = '❓';
+  document.querySelectorAll('.ep').forEach(x => x.classList.remove('sel'));
+  movePattern = Array.from({length:5}, (_,r) => Array.from({length:5}, (_,c) => (r===2&&c===2)?2:0));
+  setSizeUI(1);
+  setMoveModeUI('jump');
+  initMoveGrid();
+  updatePreview();
 }
 
 // Schlägt die nächste im Basis-Katalog-Bereich (1-33) noch unbelegte ID vor,
@@ -400,8 +464,18 @@ function saveFigure() {
     alert(`ID ${fig.id} ist bereits fest belegt (Cultwesen/Glitch in cultwars.html). Wähle eine andere Katalog-ID.`);
     return;
   }
-  if (library.some(f => f.id === fig.id)) {
+  const conflict = library.some(f => f.id === fig.id && f.id !== editingId);
+  if (conflict) {
     alert(`ID ${fig.id} ist bereits belegt (in der Bibliothek oder per "Nächste frei" prüfen). Wähle eine andere Katalog-ID oder lösche zuerst die alte Figur.`);
+    return;
+  }
+  if (editingId !== null) {
+    const idx = library.findIndex(f => f.id === editingId);
+    if (idx === -1) { library.push(fig); } else { library[idx] = fig; }
+    localStorage.setItem('figuren_lib', JSON.stringify(library));
+    document.getElementById('create-status').textContent = `✅ "${fig.name}" aktualisiert.`;
+    setTimeout(() => document.getElementById('create-status').textContent = '', 3000);
+    cancelEdit();
     return;
   }
   library.push(fig);
@@ -476,12 +550,16 @@ function renderLibrary() {
     info.appendChild(el('div', 'fig-item-meta', `${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${f.moveMode==='slide'?'Gleitet':'Springt'} · ${new Date(f.created).toLocaleDateString('de-DE')}`));
     item.appendChild(info);
     const actions = el('div', 'fig-item-actions');
+    const editBtn = el('button', 'icon-btn', '✏️');
+    editBtn.title = 'Bearbeiten';
+    editBtn.onclick = () => editFig(f.id);
     const nfcBtn = el('button', 'icon-btn nfc', '📡');
     nfcBtn.title = 'NFC schreiben';
     nfcBtn.onclick = () => writeFromLib(i);
     const delBtn = el('button', 'icon-btn del', '✕');
     delBtn.title = 'Löschen';
     delBtn.onclick = () => deleteFig(i);
+    actions.appendChild(editBtn);
     actions.appendChild(nfcBtn);
     actions.appendChild(delBtn);
     item.appendChild(actions);
@@ -490,10 +568,13 @@ function renderLibrary() {
 }
 
 function deleteFig(i) {
-  if (!confirm(`"${library[i].name}" löschen?`)) return;
+  const fig = library[i];
+  if (!confirm(`"${fig.name}" löschen?`)) return;
+  const wasEditing = editingId === fig.id;
   library.splice(i, 1);
   localStorage.setItem('figuren_lib', JSON.stringify(library));
   renderLibrary();
+  if (wasEditing) cancelEdit();
 }
 
 function writeFromLib(i) {
