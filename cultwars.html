@@ -1006,31 +1006,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 // FIGURES = der Kodex / Katalog aller existierenden Figuren-Vorlagen.
 // Diese Daten ändern sich nie zur Laufzeit (außer durch den Admin-Generator / NFC-Scan neuer Templates).
 const FIGURES_CATALOG = [
-  { id:1, name:'Schattenwächter', emoji:'🗡️', size:1, moveMode:'jump',
-    story:'Einst ein Ritter des Lichts, korrumpiert durch einen alten Fluch. Seine Klinge trinkt Seelen.',
-    move:[[0,0,0,0,0],[0,1,0,1,0],[0,0,2,0,0],[0,1,0,1,0],[0,0,0,0,0]] },
-  { id:2, name:'Frostdrache', emoji:'🐉', size:9, moveMode:'jump',
-    story:'Aufgestiegen aus den Ewigen Gletschern. Sein Atem friert Zeit selbst ein.',
-    move:[[1,0,1,0,1],[0,1,1,1,0],[1,1,2,1,1],[0,1,1,1,0],[1,0,1,0,1]] },
-  { id:3, name:'Dornenhexe', emoji:'🧙‍♀️', size:1, moveMode:'slide',
-    story:'Eine Botanikerin, die die Grenze zwischen Pflanze und Magie überschritt.',
-    move:[[0,0,1,0,0],[0,0,1,0,0],[1,1,2,1,1],[0,0,1,0,0],[0,0,1,0,0]] },
-  { id:4, name:'Eisengolem', emoji:'🤖', size:4, moveMode:'jump',
-    story:'Erschaffen von einem vergessenen Magier als ewiger Torwächter.',
-    move:[[0,0,0,0,0],[0,0,1,0,0],[0,1,2,1,0],[0,0,1,0,0],[0,0,0,0,0]] },
-  { id:5, name:'Blitzfalke', emoji:'🦅', size:1, moveMode:'jump',
-    story:'Vogel aus einer anderen Dimension. Fliegt zwischen Blitzen.',
-    move:[[1,0,0,0,1],[0,0,0,0,0],[0,0,2,0,0],[0,0,0,0,0],[1,0,0,0,1]] },
-  { id:6, name:'Nebelgeist', emoji:'👻', size:1, moveMode:'jump',
-    story:'Überrest eines alten Krieges. Durchwandert Mauern ohne Widerstand.',
-    move:[[1,1,1,1,1],[1,0,0,0,1],[1,0,2,0,1],[1,0,0,0,1],[1,1,1,1,1]] },
-  { id:7, name:'Erdriese', emoji:'🏔️', size:9, moveMode:'jump',
-    story:'Lebt seit Jahrmillionen im Kern der Erde. Langsam, aber unaufhaltsam.',
-    move:[[0,1,0,1,0],[1,0,0,0,1],[0,0,2,0,0],[1,0,0,0,1],[0,1,0,1,0]] },
-  { id:8, name:'Sternenelf', emoji:'🧝', size:4, moveMode:'jump',
-    story:'Hüter der Himmelskarten. Sieht die Zukunft in Sternkonstellationen.',
-    move:[[0,0,1,0,0],[0,1,1,1,0],[1,1,2,1,1],[0,1,1,1,0],[0,0,1,0,0]] },
-  { id:9, name:'Cultwesen', emoji:'👑', size:1, moveMode:'jump', isKing:true,
+  { id:1, name:'Cultwesen', emoji:'👑', size:1, moveMode:'jump', isKing:true,
     story:'Das Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt es, zerfällt die gesamte Ordnung.',
     move:[[0,0,0,0,0],[0,1,1,1,0],[0,1,2,1,0],[0,1,1,1,0],[0,0,0,0,0]] },
   // Geheime Figur: wird nicht per gültigem NFC-Scan gefunden, sondern erscheint,
@@ -1038,11 +1014,11 @@ const FIGURES_CATALOG = [
   // Kann im Kampf nicht manuell gesteuert werden (siehe handleCellClick), bewegt
   // sich stattdessen zu Beginn ihres eigenen Zuges mit 50% Chance selbst auf ein
   // beliebiges freies Feld (siehe tryGlitchAutoMove) — danach endet der Zug sofort.
-  { id:10, name:'Glitch', emoji:'👾', size:1, moveMode:'jump', isGlitch:true,
+  { id:8, name:'Glitch', emoji:'👾', size:1, moveMode:'jump', isGlitch:true,
     story:'Kein Katalogeintrag, kein Ursprung — nur ein Riss, der auftauchte, als ein fremder Code gescannt wurde. Sie gehorcht niemandem und bewegt sich, wie es ihr beliebt.',
     move:[[0,0,0,0,0],[0,0,0,0,0],[0,0,2,0,0],[0,0,0,0,0],[0,0,0,0,0]] },
 ];
-const GLITCH_ID = 10;
+const GLITCH_ID = 8;
 
 // ---------------------------------------------------------------
 // PERSISTENZ
@@ -1056,7 +1032,7 @@ function defaultSaveData() {
     // Der Spieler beginnt nur mit dem eigenen höchsten Cultwesen (Pflichtfigur,
     // nie per NFC zu finden). Alle anderen Figuren müssen erst gescannt werden.
     collection: {
-      9: { owned:true, kills:0, uses:0, isNew:false },
+      1: { owned:true, kills:0, uses:0, isNew:false },
     },
     // Selbst erstellte / per NFC gescannte Figuren, die nicht im fest
     // eingebauten FIGURES_CATALOG stehen. Müssen hier mitgespeichert werden,
@@ -2460,7 +2436,7 @@ let senderQrInstance = null;
 // Baut die Aufstellungs-Payload, die als QR-Code kodiert wird.
 // Nutzt die aktuelle Platzierung aus der normalen Aufstellungsphase (placeFig etc.)
 function buildLineupPayload() {
-  const kingOwned = saveData.collection[9] || {};
+  const kingOwned = saveData.collection[1] || {};
   const kingTier = KING_TITLE_TIERS.find(t => t.title === kingOwned.title);
   // Figuren als flaches Zahlen-Array (id,row,col,...) statt Objekten kodieren —
   // das hält den QR-Code bei voll bestücktem Feld noch in einem gut scanbaren

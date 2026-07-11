@@ -122,6 +122,13 @@
         <div class="panel">
           <div class="panel-title">Basisdaten</div>
 
+          <label>Katalog-ID (11–33 = fester Basis-Katalog)</label>
+          <div style="display:flex; gap:8px;">
+            <input type="number" id="f-catalog-id" placeholder="leer = reine NFC-Figur" min="11" max="33" oninput="updatePayload()" style="flex:1;">
+            <button type="button" class="btn secondary" style="width:auto; margin:0; padding:9px 12px;" onclick="suggestNextCatalogId()">Nächste frei</button>
+          </div>
+          <div class="status" id="catalog-id-hint" style="margin-top:4px;">IDs 1–33 sind für den festen Basis-Katalog reserviert (33 Figuren gesamt). ID 1 (Cultwesen) &amp; ID 8 (Glitch) sind bereits fest in cultwars.html vergeben. Leer lassen = normale per-NFC-Sammelfigur außerhalb des Katalogs.</div>
+
           <label>Name der Figur</label>
           <input type="text" id="f-name" placeholder="z.B. Schattenwächter" oninput="updatePreview()">
 
@@ -203,11 +210,21 @@
 
   <!-- LIBRARY TAB -->
   <div id="tab-library" style="display:none;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
       <span style="font-size:13px; font-weight:700;" id="lib-count">0 Figuren</span>
-      <button class="btn secondary" style="width:auto; padding:8px 16px; margin:0;" onclick="exportAll()">📤 JSON exportieren</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary" style="width:auto; padding:8px 16px; margin:0;" onclick="exportAll()">📤 JSON exportieren</button>
+        <button class="btn success" style="width:auto; padding:8px 16px; margin:0;" onclick="exportCatalogCode()">🗂️ Katalog-Code kopieren</button>
+      </div>
     </div>
+    <div class="status" id="catalog-progress" style="margin-bottom:12px;"></div>
     <div class="fig-list" id="fig-library"></div>
+
+    <div class="panel" id="catalog-export-panel" style="margin-top:16px; display:none;">
+      <div class="panel-title">Katalog-Code (bereit zum Einfügen in cultwars.html, direkt nach ID 10)</div>
+      <textarea id="catalog-export-text" readonly style="min-height:160px; font-size:11px;" onclick="this.select()"></textarea>
+      <div class="status" id="catalog-export-status"></div>
+    </div>
   </div>
 
   <!-- NFC WRITER TAB -->
@@ -331,9 +348,17 @@ function updatePreview() {
   updatePayload();
 }
 
+const CATALOG_ID_MIN = 1;
+const CATALOG_ID_MAX = 33;
+// Bereits fest in FIGURES_CATALOG (cultwars.html) belegt: Cultwesen (König, id:1)
+// und Glitch (id:8). Müssen hier von Hand gepflegt werden, falls sich die IDs
+// dort je wieder ändern — der Admin-Generator kennt cultwars.html nicht.
+const RESERVED_CATALOG_IDS = [1, 8];
+
 function buildFigureData() {
+  const catalogId = parseInt(document.getElementById('f-catalog-id').value, 10);
   return {
-    id: Date.now(),
+    id: Number.isInteger(catalogId) ? catalogId : Date.now(),
     name: document.getElementById('f-name').value || 'Unbenannt',
     emoji: selectedEmoji,
     size: parseInt(document.getElementById('f-size').value) || 1,
@@ -347,6 +372,22 @@ function buildFigureData() {
   };
 }
 
+// Schlägt die nächste im Basis-Katalog-Bereich (1-33) noch unbelegte ID vor,
+// damit man beim Durchklicken der fehlenden Figuren nicht selbst mitzählen muss.
+// Überspringt sowohl bereits in der Bibliothek verwendete IDs als auch die in
+// cultwars.html fest reservierten (Cultwesen, Glitch).
+function suggestNextCatalogId() {
+  const used = new Set([...library.map(f => f.id), ...RESERVED_CATALOG_IDS]);
+  for (let id = CATALOG_ID_MIN; id <= CATALOG_ID_MAX; id++) {
+    if (!used.has(id)) {
+      document.getElementById('f-catalog-id').value = id;
+      updatePayload();
+      return;
+    }
+  }
+  alert('Basis-Katalog ist bereits voll (33/33 IDs vergeben).');
+}
+
 function updatePayload() {
   const fig = buildFigureData();
   const json = JSON.stringify(fig, null, 2);
@@ -355,6 +396,14 @@ function updatePayload() {
 
 function saveFigure() {
   const fig = buildFigureData();
+  if (RESERVED_CATALOG_IDS.includes(fig.id)) {
+    alert(`ID ${fig.id} ist bereits fest belegt (Cultwesen/Glitch in cultwars.html). Wähle eine andere Katalog-ID.`);
+    return;
+  }
+  if (library.some(f => f.id === fig.id)) {
+    alert(`ID ${fig.id} ist bereits belegt (in der Bibliothek oder per "Nächste frei" prüfen). Wähle eine andere Katalog-ID oder lösche zuerst die alte Figur.`);
+    return;
+  }
   library.push(fig);
   localStorage.setItem('figuren_lib', JSON.stringify(library));
   document.getElementById('create-status').textContent = `✅ "${fig.name}" gespeichert. (${library.length} in Bibliothek)`;
@@ -412,13 +461,18 @@ function el(tag, cls, text) {
 function renderLibrary() {
   const list = document.getElementById('fig-library');
   document.getElementById('lib-count').textContent = library.length + ' Figuren';
+  const catalogCount = library.filter(f => f.id >= CATALOG_ID_MIN && f.id <= CATALOG_ID_MAX).length;
+  const catalogSlots = CATALOG_ID_MAX - CATALOG_ID_MIN + 1 - RESERVED_CATALOG_IDS.length;
+  document.getElementById('catalog-progress').textContent = `🗂️ Basis-Katalog: ${RESERVED_CATALOG_IDS.length + catalogCount} / 33 Plätze belegt (${catalogCount} / ${catalogSlots} hier erstellt, ${RESERVED_CATALOG_IDS.length} fest in cultwars.html: Cultwesen, Glitch)`;
   list.innerHTML = '';
   if (library.length === 0) { list.appendChild(el('div', '', 'Noch keine Figuren gespeichert.')); list.firstChild.style.cssText = 'text-align:center;color:var(--text3);padding:30px;font-size:13px;'; return; }
-  library.forEach((f,i) => {
+  library.slice().sort((a,b) => a.id - b.id).forEach(f => {
+    const i = library.indexOf(f);
     const item = el('div', 'fig-item');
     item.appendChild(el('div', 'fig-item-emoji', f.emoji));
     const info = el('div', 'fig-item-info');
-    info.appendChild(el('div', 'fig-item-name', f.name));
+    const isCatalog = f.id >= CATALOG_ID_MIN && f.id <= CATALOG_ID_MAX;
+    info.appendChild(el('div', 'fig-item-name', `${isCatalog ? `#${f.id} ` : ''}${f.name}`));
     info.appendChild(el('div', 'fig-item-meta', `${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${f.moveMode==='slide'?'Gleitet':'Springt'} · ${new Date(f.created).toLocaleDateString('de-DE')}`));
     item.appendChild(info);
     const actions = el('div', 'fig-item-actions');
@@ -453,6 +507,47 @@ function exportAll() {
   const blob = new Blob([JSON.stringify(library, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'figuren-export.json'; a.click();
+}
+
+// Escaped einen String für die Verwendung in einem single-quoted JS-Literal
+// (nur die Zeichen, die tatsächlich vorkommen können: ' und \).
+function jsQuote(s) {
+  return "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+}
+
+// Formatiert eine Figur exakt im Stil der bestehenden FIGURES_CATALOG-Einträge
+// in cultwars.html, damit der erzeugte Text 1:1 dort eingefügt werden kann.
+function formatFigureAsCatalogEntry(f) {
+  const moveStr = '[' + f.move.map(row => '[' + row.join(',') + ']').join(',') + ']';
+  return `  { id:${f.id}, name:${jsQuote(f.name)}, emoji:${jsQuote(f.emoji)}, size:${f.size}, moveMode:${jsQuote(f.moveMode)},\n    story:${jsQuote(f.story)},\n    move:${moveStr} },`;
+}
+
+// Baut aus allen Bibliotheks-Figuren im reservierten Katalog-ID-Bereich (1-33,
+// abzüglich der fest vergebenen IDs für Cultwesen/Glitch) fertigen, einfügbaren
+// FIGURES_CATALOG-Code und kopiert ihn in die Zwischenablage.
+function exportCatalogCode() {
+  const catalogFigs = library.filter(f => f.id >= CATALOG_ID_MIN && f.id <= CATALOG_ID_MAX).sort((a,b) => a.id - b.id);
+  const panel = document.getElementById('catalog-export-panel');
+  const textEl = document.getElementById('catalog-export-text');
+  const statusEl = document.getElementById('catalog-export-status');
+  if (catalogFigs.length === 0) {
+    panel.style.display = 'none';
+    alert('Noch keine Figuren mit Katalog-ID in der Bibliothek. Vergib beim Erstellen eine Katalog-ID.');
+    return;
+  }
+  const code = catalogFigs.map(formatFigureAsCatalogEntry).join('\n');
+  textEl.value = code;
+  panel.style.display = 'block';
+  textEl.focus();
+  textEl.select();
+  let copied = false;
+  try {
+    document.execCommand('copy');
+    copied = true;
+  } catch (e) { /* Fallback unten: Text ist markiert, manuell mit Strg+C kopierbar */ }
+  const missing = (CATALOG_ID_MAX - CATALOG_ID_MIN + 1 - RESERVED_CATALOG_IDS.length) - catalogFigs.length;
+  statusEl.textContent = (copied ? '✅ In Zwischenablage kopiert. ' : '⚠️ Automatisches Kopieren nicht möglich — Text ist markiert, mit Strg+C kopieren. ')
+    + `${catalogFigs.length} Figur(en) im Code${missing > 0 ? `, ${missing} Katalog-Plätze noch offen` : ' — Basis-Katalog vollständig!'}.`;
 }
 
 function renderNFCSelect() {
