@@ -609,6 +609,11 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .board-cell.movable { background: rgba(16,185,129,0.25) !important; position: relative; }
   .board-cell.movable::after { content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%; background: rgba(16,185,129,0.7); }
   .board-cell.enemy-sel { background: rgba(239,68,68,0.25) !important; }
+  /* Info-Vorschau der Züge einer angetippten Gegnerfigur: hohler roter Ring statt
+     gefülltem grünen Punkt, damit sie nicht wie eigene Zugziele aussieht */
+  .board-cell.preview-src { background: rgba(239,68,68,0.45) !important; }
+  .board-cell.preview-move { background: rgba(239,68,68,0.15) !important; position: relative; }
+  .board-cell.preview-move::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(239,68,68,0.8); box-sizing: border-box; }
   .piece-overlay { position: absolute; display: flex; align-items: center; justify-content: center; pointer-events: none; border-radius: 4px; box-sizing: border-box; }
   .piece-overlay.player { outline: 2px solid rgba(var(--player-rgb),0.7); background: rgba(var(--player-rgb),0.08); }
   .piece-overlay.enemy  { outline: 2px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.06); }
@@ -816,6 +821,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   <div class="card">
     <div class="card-title">🧩 Aufstellung & Bewegung</div>
     <p class="modal-story">Vor der Schlacht platzierst du alle deine gesammelten Figuren in deinen unteren 3 Reihen. Figuren sind 1×1, 2×2 oder 3×3 Felder groß. Springer-Figuren überspringen andere Figuren auf ihrem Bewegungsmuster einfach, Gleiter-Figuren werden von jeder Figur auf ihrem Weg blockiert. Landet eine Figur auf einem Feld, das eine gegnerische Figur belegt, wird diese geschlagen und vom Feld entfernt.</p>
+    <p class="modal-story">Bist du am Zug, kannst du jederzeit eine gegnerische Figur antippen: Ihre möglichen Züge werden dann rot markiert angezeigt — reine Vorschau, dein Zug wird dadurch nicht verbraucht. Erneutes Antippen (oder das Auswählen einer eigenen Figur) blendet die Vorschau wieder aus.</p>
   </div>
 
   <div class="card">
@@ -1338,6 +1344,7 @@ let selectedFigs = new Set();
 let boardSize = 8;
 let gameState = null;
 let selectedCell = null;
+let previewCell = null; // Anker [r,c] einer Gegnerfigur, deren mögliche Züge nur angezeigt werden (Info-Vorschau, kein Zug)
 
 function goPage(name, btn) {
   // Falls gerade ein QR-Scan läuft (Kamera aktiv) und der Nutzer stattdessen
@@ -1971,6 +1978,7 @@ function startBattle() {
   document.getElementById('game-board').style.display = 'block';
   gameState = { pieces: pieces.map(p=>({...p, anchor:[...p.anchor]})) };
   selectedCell = null;
+  previewCell = null;
   currentTurn = 'player';
   roundNum = 1;
   gameOverHandled = false;
@@ -1993,6 +2001,7 @@ function endGame() {
   document.getElementById('game-menu').style.display = 'block';
   document.getElementById('game-board').style.display = 'none';
   selectedCell = null;
+  previewCell = null;
 }
 
 // --- BATTLE PHASE (turn-based) ---
@@ -2135,6 +2144,7 @@ function checkStalemate(owner) {
 function endTurn() {
   if (checkGameOver()) { renderBoard(); return; }
   selectedCell = null;
+  previewCell = null;
   if (currentTurn === 'player') {
     currentTurn = 'enemy';
     beginTurn();
@@ -2206,6 +2216,17 @@ function renderBoard() {
   const opponentOf = currentTurn === 'player' ? 'enemy' : 'player';
   gameState.pieces.filter(p=>p.owner===opponentOf).forEach(p=>pieceCellsG(p).forEach(([r,c])=>enemyOcc.add(r+','+c)));
 
+  // Info-Vorschau: mögliche Züge einer angetippten Gegnerfigur (kein eigener Zug)
+  const previewSet = new Set();
+  const previewBodySet = new Set();
+  if (previewCell) {
+    const pp = gameState.pieces.find(p=>p.anchor[0]===previewCell[0]&&p.anchor[1]===previewCell[1]&&p.owner===opponentOf);
+    if (pp) {
+      pieceCellsG(pp).forEach(([r,c])=>previewBodySet.add(r+','+c));
+      getMovesFor(previewCell, opponentOf).forEach(([r,c])=>previewSet.add(r+','+c));
+    }
+  }
+
   for (let r=0;r<n;r++) for (let c=0;c<n;c++) {
     const cell = document.createElement('div');
     cell.className = 'board-cell '+((r+c)%2===0?'light':'dark');
@@ -2215,6 +2236,8 @@ function renderBoard() {
       if (enemyOcc.has(key)) cell.classList.add('enemy-sel');
       else cell.classList.add('movable');
     }
+    if (previewBodySet.has(key)) cell.classList.add('preview-src');
+    else if (previewSet.has(key)) cell.classList.add('preview-move');
     cell.onclick = ()=>handleCellClick(r,c);
     board.appendChild(cell);
   }
@@ -2239,14 +2262,29 @@ function handleCellClick(r, c) {
     if (moves.some(([mr,mc])=>mr===r&&mc===c)) {
       doMove(selectedCell, [r,c], activeOwner);
       selectedCell = null;
+      previewCell = null;
       endTurn();
       return;
     }
     selectedCell = null;
   }
 
-  if (hit && hit.owner===activeOwner && !isGlitchId(hit.id)) selectedCell = [...hit.anchor];
-  else selectedCell = null;
+  if (hit && hit.owner===activeOwner && !isGlitchId(hit.id)) {
+    selectedCell = [...hit.anchor];
+    previewCell = null;
+  } else if (hit && isGlitchId(hit.id)) {
+    // Glitch folgt keinem Bewegungsmuster — eine Muster-Vorschau wäre irreführend
+    selectedCell = null;
+    previewCell = null;
+    showToast('👾 Glitch bewegt sich unvorhersehbar — keine Zug-Vorschau möglich.');
+  } else if (hit && hit.owner!==activeOwner) {
+    // Info-Vorschau: Züge der angetippten Gegnerfigur anzeigen (erneutes Antippen blendet aus)
+    selectedCell = null;
+    previewCell = (previewCell && previewCell[0]===hit.anchor[0] && previewCell[1]===hit.anchor[1]) ? null : [...hit.anchor];
+  } else {
+    selectedCell = null;
+    previewCell = null;
+  }
   renderBoard();
 }
 
@@ -2757,6 +2795,7 @@ function launchGameFromExistingPlacement() {
   document.getElementById('game-board').style.display = 'block';
   gameState = { pieces: pieces.map(p => ({...p, anchor:[...p.anchor]})) };
   selectedCell = null;
+  previewCell = null;
   currentTurn = 'player';
   roundNum = 1;
   gameOverHandled = false;

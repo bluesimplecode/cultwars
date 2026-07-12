@@ -18,6 +18,7 @@
 - Keine manuelle Figuren-Auswahl mehr — alle besessenen Figuren (inkl. Pflicht-König) stehen automatisch zur Platzierung bereit
 - Figuren in den untersten 3 Reihen frei platzieren (inkl. Kollisionsprüfung und Größenberücksichtigung) — der König muss ebenfalls platziert werden
 - Rundenbasiertes Spiel: Spieler zieht, dann KI. Auch der Gegner hat immer einen eigenen König
+- Zug-Vorschau: Während des eigenen Zugs kann eine gegnerische Figur angetippt werden, um ihre möglichen Züge rot markiert einzublenden (reine Info, verbraucht keinen Zug; erneutes Antippen blendet aus; für Glitch keine Vorschau, da sie keinem Muster folgt)
 - Sieg/Niederlage wird erkannt und in Statistiken gespeichert — fällt der eigene oder gegnerische König, endet die Schlacht sofort, unabhängig von übrigen Figuren. Hat eine Seite zu Zugbeginn keinen einzigen gültigen Zug mehr (Zugzwang), verliert sie ebenfalls sofort
 
 **Spielen — Multiplayer**
@@ -152,6 +153,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Zugzwang-Prüfung: eine Seite ohne gültigen Zug verliert die Schlacht sofort | ✅ |
 | Kampfanimationen: Zugbewegung (FLIP-Gleiten) und Eliminierung (Schrumpf-/Fade-Geist), respektiert `prefers-reduced-motion` | ✅ |
 | Multiplayer-Ergebnis-Rückkanal: Host zeigt nach Schlachtende automatisch einen Ergebnis-QR-Code, den der Sender scannt und in seine eigene Statistik übernimmt | ✅ |
+| Zug-Vorschau für Gegnerfiguren: Antippen zeigt deren mögliche Züge rot markiert (Info-Vorschau, kein Zugverbrauch; gilt in Solo und Local-Multiplayer, Glitch ausgenommen) | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
