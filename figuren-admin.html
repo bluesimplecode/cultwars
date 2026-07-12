@@ -417,7 +417,9 @@ function buildFigureData() {
     size: parseInt(document.getElementById('f-size').value) || 1,
     moveMode: document.getElementById('f-move-mode').value || 'jump',
     story: document.getElementById('f-story').value || '',
-    move: movePattern,
+    // Tiefe Kopie! Eine Referenz auf das globale movePattern würde bei jedem
+    // weiteren Grid-Klick rückwirkend alle vorher gespeicherten Figuren ändern.
+    move: movePattern.map(row => [...row]),
     kills: original ? original.kills : 0,
     uses: original ? original.uses : 0,
     new: original ? original.new : true,
