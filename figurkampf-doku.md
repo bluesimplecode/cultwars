@@ -9,7 +9,8 @@
 - Jede Figur hat: Name, Emoji als Sprite, Größe (1×1 / 2×2 / 3×3 Felder), Bewegungsmuster (5×5 Grid wie Schach), Bewegungsart (springt/gleitet), Story-Text
 - Neue, noch nicht gescannte Figuren sind im Kodex als `???` verschleiert sichtbar
 - Beim ersten Öffnen einer neu gescannten Figur verschwindet der NEU-Badge
-- Der Spieler startet mit genau einer Figur: dem eigenen **Höchsten Cultwesen** (Katalog-ID 9, der Pflicht-König) — muss nie per NFC gefunden werden, alle anderen Figuren müssen erst gescannt werden
+- Der Spieler startet mit genau einer Figur: dem eigenen **Höchsten Cultwesen** (Katalog-ID 1, der Pflicht-König) — muss nie per NFC gefunden werden, alle anderen Figuren müssen erst gescannt werden
+- Der Basis-Katalog enthält 31 fest eingebaute Standardfiguren (Katalog-IDs 2–7 und 9–33, aus `figuren-export.json` übernommen); dieselben Figuren liegen als Standard-Bibliothek im Admin-Tool und sind dort bearbeitbar. Achtung: Änderungen im Admin-Tool wirken nur auf Bibliothek/NFC-Tags — bei bekannten Katalog-IDs schaltet ein Scan in der Haupt-App nur frei, die dort fest eingebaute Version der Figur gewinnt
 - Name und Emoji des höchsten Cultwesens ändern sich ausschließlich über mit dem Sammelfortschritt freigeschaltete Titel-Stufen (Figur-Detailansicht) — kein frei eingebbarer Name/Emoji, nur Auswahl aus freigeschalteten Optionen; Bewegungsmuster (identisch zur "König"-Vorlage) bleibt fix
 - Das Design wird mit jeder zusätzlich gesammelten Figur kontinuierlich okkulter und düsterer, bis Stufe 33 (siehe eigener Abschnitt unten)
 
@@ -31,7 +32,7 @@
 - Nach Schlachtende zeigt der Host automatisch einen Ergebnis-QR-Code; der Sender scannt ihn und übernimmt das Ergebnis in seine eigene Statistik
 
 **Geheime Figur: Glitch**
-- Scannt man einen ungültigen NFC-Tag (kein gültiges Figuren-JSON — z.B. ein fremder Code oder eine EC-Karte), wird statt einer Fehlermeldung die geheime Figur `👾 Glitch` (Katalog-ID 10, fest im Katalog) freigeschaltet
+- Scannt man einen ungültigen NFC-Tag (kein gültiges Figuren-JSON — z.B. ein fremder Code oder eine EC-Karte), wird statt einer Fehlermeldung die geheime Figur `👾 Glitch` (Katalog-ID 8, fest im Katalog) freigeschaltet
 - Im Kampf nicht manuell steuerbar (kann nicht ausgewählt/bewegt werden)
 - Zu Beginn des eigenen Zuges der besitzenden Seite besteht eine 50%-Chance, dass sie sich selbst auf ein beliebiges freies Feld bewegt (springt, ignoriert Blockaden, nicht auf ihr Bewegungsmuster beschränkt)
 - Bewegt sie sich eigenständig, endet der Zug der besitzenden Seite direkt danach, ohne dass diese noch eine Figur bewegen darf
@@ -95,7 +96,7 @@ Eine Ausnahme ist `--player-rgb`: die Farbe der eigenen Spielfiguren auf dem Bre
 
 Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangestellt (z.B. "Verdorbenes Höchstes Cultwesen") und erscheint überall, wo der Figurenname angezeigt wird. Es gibt keine freie Name- oder Emoji-Eingabe mehr — auswählbar sind ausschließlich die freigeschalteten Titel-Stufen.
 
-**Test-Cheat:** `cultwars.html?maxed=N` bzw. `?maxxed=N` (beide Schreibweisen funktionieren, z.B. `?maxed=30`) fügt beim Laden `N` synthetische Testfiguren zur Sammlung hinzu, um jede Eskalationsstufe ohne echtes Scannen begutachten zu können. Funktioniert auch beim direkten Öffnen per `file://` (kein Server nötig). Wirkt nur clientseitig für die laufende Sitzung und verändert `localStorage` nicht von sich aus — ein Reload ohne den Parameter zeigt wieder den echten Spielstand. (Bewusst als URL-Parameter statt als separate `cultwars-maxxed-out.html`-Kopie umgesetzt, damit keine zweite, potenziell veraltende Kopie der App gepflegt werden muss.)
+**Test-Cheat:** `cultwars.html?maxed=N` bzw. `?maxxed=N` (beide Schreibweisen funktionieren, z.B. `?maxed=22`) schaltet beim Laden die ersten `N` noch nicht besessenen Katalogfiguren frei (in ID-Reihenfolge, inkl. Glitch) — keine synthetischen Testfiguren mehr. Damit lässt sich jede Eskalationsstufe ohne echtes Scannen begutachten; mehr als die 32 zusätzlichen Katalogfiguren (Stufe 32) sind über den Cheat nicht erreichbar, Stufe 33 braucht eine zusätzliche eigene NFC-Figur. Funktioniert auch beim direkten Öffnen per `file://` (kein Server nötig). Wirkt nur clientseitig für die laufende Sitzung und verändert `localStorage` nicht von sich aus — ein Reload ohne den Parameter zeigt wieder den echten Spielstand. (Bewusst als URL-Parameter statt als separate `cultwars-maxxed-out.html`-Kopie umgesetzt, damit keine zweite, potenziell veraltende Kopie der App gepflegt werden muss.)
 
 ---
 
@@ -140,7 +141,8 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | König-Tod beendet die Schlacht sofort — unabhängig von übrigen Figuren | ✅ |
 | König-Hervorhebung: goldener Rahmen, Krone, Puls-Glow auf Spielbrett | ✅ |
 | Solo-Gegner-KI bekommt garantiert ebenfalls einen König | ✅ |
-| Höchstes Cultwesen (König, Katalog-ID 9) fest im Katalog, für jeden Spieler von Anfang an freigeschaltet | ✅ |
+| Höchstes Cultwesen (König, Katalog-ID 1) fest im Katalog, für jeden Spieler von Anfang an freigeschaltet | ✅ |
+| 31 Standardfiguren (Katalog-IDs 2–7, 9–33) fest in `FIGURES_CATALOG` eingebaut — im Kodex sichtbar, per NFC freischaltbar, im Multiplayer dem Host bekannt | ✅ |
 | Emoji des höchsten Cultwesens spielerseitig wählbar (Figur-Detailansicht, Override in `saveData` gespeichert) | ✅ |
 | App umbenannt: `figuren-spiel.html` → `cultwars.html`, Seitentitel "Cultwars", Kodex-Überschrift "Cultwesenkodex" | ✅ |
 | Okkulte Design-Eskalation: Theme verschiebt sich kontinuierlich mit jeder Figur, Maximum bei Stufe 33 | ✅ |
@@ -168,6 +170,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | NFC Payload-Vorschau (Bytes-Anzeige) | ✅ |
 | Bewegungsart wählbar: Springt (Standard) / Gleitet (wird blockiert) | ✅ |
 | König-Flag ("Ist der König") mit frei wählbarem Emoji, goldene Hervorhebung in Vorschau + Bibliothek | ✅ |
+| 31 Standardfiguren als `DEFAULT_FIGURES` fest eingebaut, werden beim Laden in die Bibliothek gemergt und sind dort normal bearbeitbar (gelöschte Standardfiguren kommen beim nächsten Laden im Originalzustand zurück) | ✅ |
 
 ---
 
