@@ -1239,10 +1239,14 @@ function importSaveDataFile(input) {
       return;
     }
     if (!confirm('Aktuellen Speicherstand wirklich mit der importierten Datei überschreiben?')) return;
-    // ältere Exporte kannten dieses Feld noch nicht — und ein manuell
+    // ältere Exporte kannten diese Felder noch nicht — und ein manuell
     // bearbeiteter, nicht-Array-Wert würde mergeCustomFiguresIntoCatalog()
     // zum Absturz bringen, nachdem saveData schon überschrieben wurde.
+    // Fehlende Zähler würden sonst beim nächsten Hochzählen zu NaN
+    // (gleiche Fallbacks wie in loadSave).
     if (!Array.isArray(data.customFigures)) data.customFigures = [];
+    if (data.stats.draws == null) data.stats.draws = 0;
+    if (data.soloWins == null) data.soloWins = 0;
     saveData = data;
     mergeCustomFiguresIntoCatalog();
     saveSave();
