@@ -160,6 +160,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Kampfanimationen: Zugbewegung (FLIP-Gleiten) und Eliminierung (Schrumpf-/Fade-Geist), respektiert `prefers-reduced-motion` | ✅ |
 | Multiplayer-Ergebnis-Rückkanal: Host zeigt nach Schlachtende automatisch einen Ergebnis-QR-Code, den der Sender scannt und in seine eigene Statistik übernimmt | ✅ |
 | Zug-Vorschau für Gegnerfiguren: Antippen zeigt deren mögliche Züge rot markiert (Info-Vorschau, kein Zugverbrauch; gilt in Solo und Local-Multiplayer, Glitch ausgenommen) | ✅ |
+| Schlag-Anzeige über die volle Zielfläche: Bei Mehrfelder-Figuren werden Züge rot markiert, wenn irgendein Feld der Zielfläche einen Gegner trifft; bedrohte Figuren bekommen einen gestrichelten Zielrahmen, Hover auf ein Zugziel zeigt die volle Zielfläche — gilt gleichermaßen für die Gegner-Vorschau (Schlag-Züge dort als gefüllter Punkt statt hohlem Ring) | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 

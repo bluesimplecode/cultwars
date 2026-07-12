@@ -611,11 +611,22 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .board-cell.movable { background: rgba(16,185,129,0.25) !important; position: relative; }
   .board-cell.movable::after { content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%; background: rgba(16,185,129,0.7); }
   .board-cell.enemy-sel { background: rgba(239,68,68,0.25) !important; }
+  /* Figuren, die von mindestens einem Zug der ausgewählten (bzw. in der Vorschau
+     angetippten) Figur getroffen würden: gestrichelter roter Zielrahmen */
+  .board-cell.capture-target { position: relative; }
+  .board-cell.capture-target::before { content: ''; position: absolute; inset: 2px; border: 2px dashed rgba(239,68,68,0.9); border-radius: 4px; pointer-events: none; }
+  /* Hover auf ein Zugziel: volle Zielfläche der Mehrfelder-Figur */
+  .board-cell.move-target { background: rgba(16,185,129,0.35) !important; }
   /* Info-Vorschau der Züge einer angetippten Gegnerfigur: hohler roter Ring statt
      gefülltem grünen Punkt, damit sie nicht wie eigene Zugziele aussieht */
   .board-cell.preview-src { background: rgba(239,68,68,0.45) !important; }
   .board-cell.preview-move { background: rgba(239,68,68,0.15) !important; position: relative; }
   .board-cell.preview-move::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(239,68,68,0.8); box-sizing: border-box; }
+  /* Schlag-Zug in der Gegner-Vorschau: gefüllter Punkt statt hohlem Ring */
+  .board-cell.preview-capture { background: rgba(239,68,68,0.3) !important; position: relative; }
+  .board-cell.preview-capture::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%; background: rgba(239,68,68,0.85); }
+  /* Hover auf einen Vorschau-Zug: volle Zielfläche der Gegnerfigur */
+  .board-cell.preview-target { background: rgba(239,68,68,0.35) !important; }
   .piece-overlay { position: absolute; display: flex; align-items: center; justify-content: center; pointer-events: none; border-radius: 4px; box-sizing: border-box; }
   .piece-overlay.player { outline: 2px solid rgba(var(--player-rgb),0.7); background: rgba(var(--player-rgb),0.08); }
   .piece-overlay.enemy  { outline: 2px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.06); }
@@ -2358,14 +2369,40 @@ function renderBoard() {
   const opponentOf = currentTurn === 'player' ? 'enemy' : 'player';
   gameState.pieces.filter(p=>p.owner===opponentOf).forEach(p=>pieceCellsG(p).forEach(([r,c])=>enemyOcc.add(r+','+c)));
 
-  // Info-Vorschau: mögliche Züge einer angetippten Gegnerfigur (kein eigener Zug)
+  // Schlag-Erkennung über die volle Zielfläche der Figur: Mehrfelder-Figuren
+  // schlagen alles, was ihre Fläche am Ziel überlappt — nicht nur das Anker-Feld.
+  // captureMoves = Anker-Felder von Schlag-Zügen, threatened = Felder der
+  // Figuren, die von mindestens einem möglichen Zug getroffen würden.
+  const selPiece = selectedCell ? gameState.pieces.find(p=>p.anchor[0]===selectedCell[0]&&p.anchor[1]===selectedCell[1]) : null;
+  const selSpan = selPiece ? figSpan(FIGURES.find(x=>x.id===selPiece.id)||{size:1}) : 1;
+  const captureMoves = new Set();
+  const threatened = new Set();
+  if (selPiece) {
+    moves.forEach(([mr,mc]) => {
+      const hits = figCells(selSpan, mr, mc).filter(([r,c])=>enemyOcc.has(r+','+c));
+      if (hits.length) { captureMoves.add(mr+','+mc); hits.forEach(([r,c])=>threatened.add(r+','+c)); }
+    });
+  }
+
+  // Info-Vorschau: mögliche Züge einer angetippten Gegnerfigur (kein eigener Zug).
+  // Auch hier gilt die volle Zielfläche: Schlag-Züge werden als gefüllter Punkt
+  // markiert (normale Züge als hohler Ring), bedrohte eigene Figuren eingerahmt.
   const previewSet = new Set();
+  const previewCaptureSet = new Set();
   const previewBodySet = new Set();
+  let previewSpan = 1;
   if (previewCell) {
     const pp = gameState.pieces.find(p=>p.anchor[0]===previewCell[0]&&p.anchor[1]===previewCell[1]&&p.owner===opponentOf);
     if (pp) {
+      previewSpan = figSpan(FIGURES.find(x=>x.id===pp.id)||{size:1});
+      const ownOcc = new Set();
+      gameState.pieces.filter(p=>p.owner===currentTurn).forEach(p=>pieceCellsG(p).forEach(([r,c])=>ownOcc.add(r+','+c)));
       pieceCellsG(pp).forEach(([r,c])=>previewBodySet.add(r+','+c));
-      getMovesFor(previewCell, opponentOf).forEach(([r,c])=>previewSet.add(r+','+c));
+      getMovesFor(previewCell, opponentOf).forEach(([mr,mc]) => {
+        previewSet.add(mr+','+mc);
+        const hits = figCells(previewSpan, mr, mc).filter(([r,c])=>ownOcc.has(r+','+c));
+        if (hits.length) { previewCaptureSet.add(mr+','+mc); hits.forEach(([r,c])=>threatened.add(r+','+c)); }
+      });
     }
   }
 
@@ -2375,11 +2412,32 @@ function renderBoard() {
     const key = r+','+c;
     if (selBodySet.has(key)) cell.classList.add('selected');
     if (moveSet.has(key)) {
-      if (enemyOcc.has(key)) cell.classList.add('enemy-sel');
+      if (captureMoves.has(key)) cell.classList.add('enemy-sel');
       else cell.classList.add('movable');
+      // Desktop-Komfort: Hover auf ein Zugziel zeigt die volle Zielfläche
+      if (selSpan > 1) {
+        cell.addEventListener('mouseenter', () => figCells(selSpan, r, c).forEach(([rr,cc]) => {
+          const el = board.children[rr*n+cc];
+          if (el) el.classList.add('move-target');
+        }));
+        cell.addEventListener('mouseleave', () => board.querySelectorAll('.move-target').forEach(el=>el.classList.remove('move-target')));
+      }
     }
+    if (threatened.has(key)) cell.classList.add('capture-target');
     if (previewBodySet.has(key)) cell.classList.add('preview-src');
-    else if (previewSet.has(key)) cell.classList.add('preview-move');
+    // Kein else: kurze Züge großer Figuren haben ihr Anker-Feld innerhalb der
+    // eigenen Fläche — der Zug-Marker muss auch dort sichtbar bleiben.
+    if (previewSet.has(key)) {
+      cell.classList.add(previewCaptureSet.has(key) ? 'preview-capture' : 'preview-move');
+      // Auch in der Vorschau: Hover zeigt die volle Zielfläche der Gegnerfigur
+      if (previewSpan > 1) {
+        cell.addEventListener('mouseenter', () => figCells(previewSpan, r, c).forEach(([rr,cc]) => {
+          const el = board.children[rr*n+cc];
+          if (el) el.classList.add('preview-target');
+        }));
+        cell.addEventListener('mouseleave', () => board.querySelectorAll('.preview-target').forEach(el=>el.classList.remove('preview-target')));
+      }
+    }
     cell.onclick = ()=>handleCellClick(r,c);
     board.appendChild(cell);
   }
