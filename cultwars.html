@@ -1964,25 +1964,71 @@ function launchGame() {
     // Glitch ist eine geheime Figur, die nur über einen ungültigen NFC-Scan
     // entdeckt werden soll — die KI darf sie daher nie vorher zeigen.
     // Grundstärke 3 Figuren; jeder bisherige Solo-Sieg gibt der KI dauerhaft
-    // eine weitere. Zuerst kommen Figuren, die der Spieler noch nicht besitzt
-    // (in Katalog-Reihenfolge), danach zur Auffüllung auch besessene.
+    // eine weitere. Auswahl und Platzierung sind pro Spiel zufällig gemischt —
+    // bevorzugt werden weiterhin Figuren, die der Spieler noch nicht besitzt,
+    // danach füllen besessene auf.
+    const shuffle = arr => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
     const pool = FIGURES.filter(f => !f.isKing && !f.isGlitch);
-    const unowned = pool.filter(f => !selectedFigs.has(f.id));
-    const owned = pool.filter(f => selectedFigs.has(f.id));
+    const unowned = shuffle(pool.filter(f => !selectedFigs.has(f.id)));
+    const owned = shuffle(pool.filter(f => selectedFigs.has(f.id)));
     const enemyRest = [...unowned, ...owned].slice(0, 3 + (saveData.soloWins || 0));
     const enemyRoster = enemyKing ? [enemyKing, ...enemyRest] : enemyRest;
-    // Greedy in die oberen 3 Reihen packen (Spiegel der Spielerzone unten);
-    // was dort keinen Platz mehr findet, wird weggelassen.
-    const enemyOcc = new Set();
-    enemyRoster.forEach(f => {
+    // Jede Figur auf einen zufälligen freien Platz in den oberen 3 Reihen
+    // (Spiegel der Spielerzone unten). Große Figuren zuerst platzieren, damit
+    // zusammenhängende Blöcke nicht von kleinen Figuren zerstückelt werden.
+    // Da zufällige Positionen die Zone fragmentieren können, wird die
+    // Platzierung mehrfach ausgewürfelt und der Versuch genommen, der die
+    // meisten Figuren unterbringt; was dann noch keinen Platz hat, entfällt.
+    const bySize = [...enemyRoster].sort((a, b) => figSpan(b) - figSpan(a));
+    const tryPlacement = () => {
+      const occ = new Set();
+      const placed = [];
+      bySize.forEach(f => {
+        const span = figSpan(f);
+        const spots = [];
+        for (let r = 0; r + span <= 3; r++) for (let c = 0; c + span <= boardSize; c++) {
+          if (!figCells(span, r, c).some(([rr,cc]) => occ.has(rr+','+cc))) spots.push([r, c]);
+        }
+        if (!spots.length) return;
+        const [r, c] = spots[Math.floor(Math.random() * spots.length)];
+        figCells(span, r, c).forEach(([rr,cc]) => occ.add(rr+','+cc));
+        placed.push({ f, anchor: [r, c] });
+      });
+      return placed;
+    };
+    let bestPlacement = [];
+    for (let attempt = 0; attempt < 20 && bestPlacement.length < enemyRoster.length; attempt++) {
+      const trial = tryPlacement();
+      if (trial.length > bestPlacement.length) bestPlacement = trial;
+    }
+    // Auffüllen: Hat eine (große) Roster-Figur keinen Platz gefunden, rückt
+    // eine kleinere aus dem restlichen Pool nach, damit die KI ihre durch
+    // soloWins bestimmte Sollstärke behält, solange überhaupt noch etwas passt.
+    const occ = new Set();
+    bestPlacement.forEach(({ f, anchor }) => figCells(figSpan(f), anchor[0], anchor[1]).forEach(([rr,cc]) => occ.add(rr+','+cc)));
+    const usedIds = new Set(bestPlacement.map(x => x.f.id));
+    for (const f of [...unowned, ...owned]) {
+      if (bestPlacement.length >= enemyRoster.length) break;
+      if (usedIds.has(f.id)) continue;
       const span = figSpan(f);
+      const spots = [];
       for (let r = 0; r + span <= 3; r++) for (let c = 0; c + span <= boardSize; c++) {
-        const cells = figCells(span, r, c);
-        if (cells.some(([rr,cc]) => enemyOcc.has(rr+','+cc))) continue;
-        cells.forEach(([rr,cc]) => enemyOcc.add(rr+','+cc));
-        pieces.push({ owner:'enemy', id:f.id, emoji: f.isKing ? AI_KING_EMOJI : f.emoji, anchor:[r,c] });
-        return;
+        if (!figCells(span, r, c).some(([rr,cc]) => occ.has(rr+','+cc))) spots.push([r, c]);
       }
+      if (!spots.length) continue;
+      const anchor = spots[Math.floor(Math.random() * spots.length)];
+      figCells(span, anchor[0], anchor[1]).forEach(([rr,cc]) => occ.add(rr+','+cc));
+      bestPlacement.push({ f, anchor });
+      usedIds.add(f.id);
+    }
+    bestPlacement.forEach(({ f, anchor }) => {
+      pieces.push({ owner:'enemy', id:f.id, emoji: f.isKing ? AI_KING_EMOJI : f.emoji, anchor });
     });
   }
 
