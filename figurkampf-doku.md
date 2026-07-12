@@ -18,7 +18,9 @@
 - Spielfeldgröße wählen (6×6, 8×8, 10×10)
 - Keine manuelle Figuren-Auswahl mehr — alle besessenen Figuren (inkl. Pflicht-König) stehen automatisch zur Platzierung bereit
 - Figuren in den untersten 3 Reihen frei platzieren (inkl. Kollisionsprüfung und Größenberücksichtigung) — der König muss ebenfalls platziert werden
+- Die Figuren-Hand in der Platzierungsphase ist nach Größe filterbar (Alle / 1×1 / 2×2 / 3×3); der Filter setzt sich bei jeder neuen Platzierung auf "Alle" zurück
 - Rundenbasiertes Spiel: Spieler zieht, dann KI. Auch der Gegner hat immer einen eigenen König
+- Mitwachsende KI: Die Solo-KI startet mit König + 3 Figuren; jeder Solo-Sieg des Spielers gibt ihr dauerhaft eine Figur mehr (persistiert als `soloWins` im Speicherstand, kein Reset bei Niederlage). Aufgefüllt wird zuerst mit Figuren, die der Spieler noch nicht besitzt (Katalog-Reihenfolge), danach mit besessenen; platziert wird greedy in den oberen 3 Reihen, was nicht passt, entfällt
 - Zug-Vorschau: Während des eigenen Zugs kann eine gegnerische Figur angetippt werden, um ihre möglichen Züge rot markiert einzublenden (reine Info, verbraucht keinen Zug; erneutes Antippen blendet aus; für Glitch keine Vorschau, da sie keinem Muster folgt)
 - Sieg/Niederlage wird erkannt und in Statistiken gespeichert — fällt der eigene oder gegnerische König, endet die Schlacht sofort, unabhängig von übrigen Figuren. Hat eine Seite zu Zugbeginn keinen einzigen gültigen Zug mehr (Zugzwang), verliert sie ebenfalls sofort
 
@@ -118,6 +120,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Spielfeldgröße wählbar | ✅ |
 | Keine manuelle Figuren-Auswahl mehr — Solo und Multiplayer (Host + Sender) nehmen automatisch alle besessenen Figuren mit | ✅ |
 | Platzierungsphase: freie Positionierung in den untersten 3 Reihen | ✅ |
+| Größenfilter in der Platzierungs-Hand (Alle / 1×1 / 2×2 / 3×3), Reset bei neuer Platzierung | ✅ |
 | Platzierung berücksichtigt Figurengröße (1×1, 2×2, 3×3 als Block) | ✅ |
 | Emoji als skalierter Block-Overlay (nicht einzelne Felder) | ✅ |
 | Bewegungsursprung bei Mehrfelderfiguren korrekt (Mittelpunkt) | ✅ |
@@ -141,6 +144,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | König-Tod beendet die Schlacht sofort — unabhängig von übrigen Figuren | ✅ |
 | König-Hervorhebung: goldener Rahmen, Krone, Puls-Glow auf Spielbrett | ✅ |
 | Solo-Gegner-KI bekommt garantiert ebenfalls einen König | ✅ |
+| Mitwachsende Solo-KI: pro Solo-Sieg dauerhaft eine Gegnerfigur mehr (Basis 3, `soloWins` im Speicherstand) | ✅ |
 | Höchstes Cultwesen (König, Katalog-ID 1) fest im Katalog, für jeden Spieler von Anfang an freigeschaltet | ✅ |
 | 31 Standardfiguren (Katalog-IDs 2–7, 9–33) fest in `FIGURES_CATALOG` eingebaut — im Kodex sichtbar, per NFC freischaltbar, im Multiplayer dem Host bekannt | ✅ |
 | Emoji des höchsten Cultwesens spielerseitig wählbar (Figur-Detailansicht, Override in `saveData` gespeichert) | ✅ |
