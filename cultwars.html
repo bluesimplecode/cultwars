@@ -774,7 +774,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     <div style="display:flex; gap:8px; padding:0 16px 12px; overflow-x:auto; scrollbar-width:none;" id="placement-hand"></div>
 
     <div style="font-size:11px; color:var(--text3); text-align:center; padding:0 16px 6px;" id="placement-hint">Wähle eine Figur, dann tippe auf ein grünes Feld</div>
-    <div class="board-wrap"><div class="board-outer" id="placement-outer"><div class="board" id="placement-board"></div></div></div>
+    <div class="board-wrap"><div class="board-outer" id="placement-outer"><div class="board" id="placement-board" role="group" aria-label="Platzierungsbrett — mit Pfeiltasten navigieren, Enter platziert oder entfernt"></div></div></div>
 
     <div style="display:flex; gap:10px; padding:12px 16px 0;">
       <button class="action-btn secondary" style="margin:0; flex:1;" onclick="clearPlacement()">↺ Zurücksetzen</button>
@@ -792,7 +792,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
       <span style="font-size:12px; color:var(--text2);" id="turn-label">Runde 1</span>
     </div>
     <div class="turn-info" id="game-msg">Wähle eine Figur zum Bewegen</div>
-    <div class="board-wrap"><div class="board-outer" id="game-outer"><div class="board" id="the-board"></div></div></div>
+    <div class="board-wrap"><div class="board-outer" id="game-outer"><div class="board" id="the-board" role="group" aria-label="Spielbrett — mit Pfeiltasten navigieren, Enter wählt und zieht"></div></div></div>
     <button class="action-btn secondary" onclick="endGame()" style="margin-top:8px;">← Zurück zum Menü</button>
   </div>
 </div>
@@ -2172,6 +2172,9 @@ function filterPlacementFigs(el, type) {
 
 function renderPlacementHand() {
   const hand = document.getElementById('placement-hand');
+  // Fokus-Erhalt: die Hand wird bei jeder Auswahl neu aufgebaut
+  const hadFocus = hand.contains(document.activeElement);
+  const focusedId = hadFocus && document.activeElement.dataset ? document.activeElement.dataset.figId : null;
   hand.innerHTML = '';
   [...selectedFigs].forEach(id => {
     const f = FIGURES.find(x=>x.id===id);
@@ -2181,6 +2184,11 @@ function renderPlacementHand() {
     const isUsed = placementUsed.has(id);
     const d = document.createElement('div');
     d.className = 'hand-fig'+(isSelected?' selected':'')+(isUsed?' used':'')+(f.isKing?' king-glow':'');
+    d.dataset.figId = id;
+    d.setAttribute('role', 'button');
+    d.setAttribute('tabindex', '0');
+    d.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    d.setAttribute('aria-label', `${f.name}, ${sizeLabel(f.size)}${f.isKing ? ', Pflichtfigur' : ''}${isUsed ? ', bereits platziert' : ''}${isSelected ? ', ausgewählt' : ''}`);
     d.appendChild(el('span', 'hf-emoji', f.emoji));
     d.appendChild(el('span', 'hf-name', f.name));
     d.appendChild(el('span', 'hf-size', sizeLabel(f.size)));
@@ -2192,9 +2200,16 @@ function renderPlacementHand() {
       document.getElementById('placement-hint').textContent = hf
         ? `Tippe auf grünes Feld — ${hf.emoji} belegt ${sizeLabel(hf.size)}`
         : 'Wähle eine Figur aus deiner Hand';
+      announce(hf
+        ? `${hf.name} ausgewählt — wähle ein freies Feld in den unteren 3 Reihen`
+        : 'Auswahl aufgehoben');
     };
     hand.appendChild(d);
   });
+  if (focusedId) {
+    const back = hand.querySelector(`[data-fig-id="${focusedId}"]`);
+    if (back) back.focus();
+  }
 }
 
 function hoverPreview(f, ar, ac) {
@@ -2212,30 +2227,51 @@ function renderPlacementBoard() {
   const outer = document.getElementById('placement-outer');
   const board = document.getElementById('placement-board');
   const n = boardSize;
+  const hadFocus = board.contains(document.activeElement);
   board.style.gridTemplateColumns = `repeat(${n},${CELL_PX}px)`;
   board.innerHTML = '';
   const selFig = placementSelected ? FIGURES.find(x=>x.id===placementSelected) : null;
   const occ = occupiedSet(null);
+
+  // Screenreader: Figur pro Zelle für die Zellen-Labels
+  const cellPiece = new Map();
+  pieces.forEach(p => {
+    const f = FIGURES.find(x=>x.id===p.id);
+    pieceCells(p).forEach(([r,c]) => cellPiece.set(r+','+c, { name: (f && f.name) || 'Figur', owner: p.owner }));
+  });
 
   for (let r=0;r<n;r++) for (let c=0;c<n;c++) {
     const cell = document.createElement('div');
     cell.className = 'board-cell '+((r+c)%2===0?'light':'dark');
     if (r===n-3) cell.style.borderTop = '1.5px solid rgba(16,185,129,0.5)';
     const key = r+','+c;
+    cell.setAttribute('role', 'button');
+    cell.tabIndex = -1;
+    cell.dataset.r = r; cell.dataset.c = c;
+    let srLabel = `Zeile ${r+1}, Spalte ${c+1}`;
+    const pc = cellPiece.get(key);
+    if (pc) {
+      srLabel += pc.owner === 'player'
+        ? `, ${pc.name}, deine Figur — Enter entfernt sie`
+        : `, ${pc.name}, Gegner`;
+    }
     if (!occ.has(key) && r>=n-3 && selFig && canPlace(selFig, r, c)) {
       cell.classList.add('place-zone');
       cell.addEventListener('mouseenter', ()=>hoverPreview(selFig,r,c));
       cell.addEventListener('mouseleave', clearHoverPreview);
-      cell.onclick = ()=>placeFig(r,c);
+      cell.onclick = ()=>{ storeBoardFocus(board, r, c); placeFig(r,c); };
+      srLabel += `, frei — Enter platziert ${selFig.name}`;
     }
+    cell.setAttribute('aria-label', srLabel);
     board.appendChild(cell);
   }
   // Clicks on player pieces → remove
   pieces.filter(p=>p.owner==='player').forEach(p => {
     pieceCells(p).forEach(([r,c]) => {
-      board.children[r*n+c].onclick = ()=>removePlacedFig(p.id);
+      board.children[r*n+c].onclick = ()=>{ storeBoardFocus(board, r, c); removePlacedFig(p.id); };
     });
   });
+  applyRovingFocus(board, placementBoardFocus, hadFocus);
 
   drawOverlays(outer, pieces, null, []);
   document.getElementById('start-battle-btn').style.opacity = pieces.some(p=>p.owner==='player') ? '1':'0.5';
@@ -2252,14 +2288,17 @@ function placeFig(r, c) {
   const rem = [...selectedFigs].filter(id=>!placementUsed.has(id)).length;
   document.getElementById('placement-hint').textContent = rem===0
     ? '✅ Alle platziert — bereit!' : `${rem} Figur${rem>1?'en':''} noch nicht platziert`;
+  announce(`${f.name} platziert auf Zeile ${r+1}, Spalte ${c+1}. ${rem===0 ? 'Alle Figuren platziert' : rem + ' noch nicht platziert'}`);
 }
 
 function removePlacedFig(id) {
+  const f = FIGURES.find(x=>x.id===id);
   pieces = pieces.filter(p=>p.id!==id);
   placementUsed.delete(id);
   renderPlacementHand();
   renderPlacementBoard();
   document.getElementById('placement-hint').textContent = 'Wähle eine Figur aus deiner Hand';
+  announce(`${f ? f.name : 'Figur'} vom Brett entfernt`);
 }
 
 function startBattle() {
@@ -2496,6 +2535,9 @@ function renderBoard() {
   const outer = document.getElementById('game-outer');
   const board = document.getElementById('the-board');
   const n = boardSize;
+  // Vor dem Neuaufbau merken, ob der Tastatur-Fokus auf dem Brett lag —
+  // dann wird er nach dem Rendern auf dieselbe Zelle zurückgesetzt.
+  const hadFocus = board.contains(document.activeElement);
   board.style.gridTemplateColumns = `repeat(${n},${CELL_PX}px)`;
   board.innerHTML = '';
 
@@ -2559,11 +2601,37 @@ function renderBoard() {
     }
   }
 
+  // Screenreader: Figur pro Zelle nachschlagbar machen (für die Zellen-Labels)
+  const cellPiece = new Map();
+  gameState.pieces.forEach(p => {
+    const f = FIGURES.find(x=>x.id===p.id);
+    pieceCellsG(p).forEach(([r,c]) => cellPiece.set(r+','+c, {
+      name: (f && f.name) || 'Figur', owner: p.owner,
+      isKing: !!(f && f.isKing), isGlitch: isGlitchId(p.id)
+    }));
+  });
+
   for (let r=0;r<n;r++) for (let c=0;c<n;c++) {
     const cell = document.createElement('div');
     cell.className = 'board-cell '+((r+c)%2===0?'light':'dark');
     const key = r+','+c;
-    if (selBodySet.has(key)) cell.classList.add('selected');
+    cell.setAttribute('role', 'button');
+    cell.tabIndex = -1;
+    cell.dataset.r = r; cell.dataset.c = c;
+    let srLabel = `Zeile ${r+1}, Spalte ${c+1}`;
+    const pc = cellPiece.get(key);
+    if (pc) {
+      const ownerTxt = pc.owner === 'player'
+        ? (isLocalMultiplayer ? 'Spieler 1' : 'deine Figur')
+        : (isLocalMultiplayer ? 'Spieler 2' : 'Gegner');
+      srLabel += `, ${pc.name}, ${ownerTxt}${pc.isKing && !pc.name.includes('Cultwesen') ? ', Cultwesen' : ''}${pc.isGlitch ? ', unkontrollierbar' : ''}`;
+    }
+    if (selBodySet.has(key)) { cell.classList.add('selected'); srLabel += ', ausgewählt'; }
+    if (threatened.has(key)) srLabel += ', bedroht';
+    if (theorySet.has(key)) srLabel += ', Zug blockiert';
+    if (previewSet.has(key)) srLabel += previewCaptureSet.has(key) ? ', Gegner könnte hier schlagen' : ', Gegner-Zugziel';
+    if (moveSet.has(key)) srLabel += captureMoves.has(key) ? ', Schlag-Zug — Enter zieht' : ', Zugziel — Enter zieht';
+    cell.setAttribute('aria-label', srLabel);
     if (moveSet.has(key)) {
       if (captureMoves.has(key)) cell.classList.add('enemy-sel');
       else cell.classList.add('movable');
@@ -2592,11 +2660,64 @@ function renderBoard() {
         cell.addEventListener('mouseleave', () => board.querySelectorAll('.preview-target').forEach(el=>el.classList.remove('preview-target')));
       }
     }
-    cell.onclick = ()=>handleCellClick(r,c);
+    cell.onclick = ()=>{ storeBoardFocus(board, r, c); handleCellClick(r,c); };
     board.appendChild(cell);
   }
+  applyRovingFocus(board, battleBoardFocus, hadFocus);
   drawBattleOverlays(outer, gameState.pieces, selectedCell, moves);
 }
+
+// --- Tastatur-Navigation auf den Brettern (Screenreader/Keyboard) ---
+// Rovender Tabindex: genau eine Zelle ist per Tab erreichbar, Pfeiltasten
+// bewegen den Fokus. Nach jedem Neuaufbau des Bretts wird der Fokus auf die
+// zuletzt fokussierte Zelle zurückgesetzt (Bretter werden bei jedem Zug neu
+// gerendert, sonst fiele der Fokus auf den Seitenanfang zurück).
+let battleBoardFocus = null;    // [r,c] der zuletzt fokussierten Kampf-Zelle
+let placementBoardFocus = null; // [r,c] der zuletzt fokussierten Platzierungs-Zelle
+
+function applyRovingFocus(board, storedFocus, hadFocus) {
+  const n = boardSize;
+  let fr = 0, fc = 0;
+  if (storedFocus) { fr = Math.min(storedFocus[0], n-1); fc = Math.min(storedFocus[1], n-1); }
+  const cell = board.children[fr*n+fc];
+  if (!cell) return;
+  cell.tabIndex = 0;
+  if (hadFocus) cell.focus();
+}
+
+function boardArrowNav(board, e) {
+  const t = e.target;
+  if (!t.dataset || t.dataset.r === undefined) return;
+  const dr = e.key==='ArrowUp' ? -1 : e.key==='ArrowDown' ? 1 : 0;
+  const dc = e.key==='ArrowLeft' ? -1 : e.key==='ArrowRight' ? 1 : 0;
+  if (!dr && !dc) return;
+  e.preventDefault();
+  const n = boardSize;
+  const r = +t.dataset.r + dr, c = +t.dataset.c + dc;
+  if (r<0 || r>=n || c<0 || c>=n) return;
+  const next = board.children[r*n+c];
+  if (next) {
+    t.tabIndex = -1; next.tabIndex = 0; next.focus();
+    storeBoardFocus(board, r, c);
+  }
+}
+
+// Fokus-Position explizit speichern. Wichtig: nicht nur über focusin, denn in
+// unfokussierten Dokumenten (z.B. eingebettete Vorschau) setzt focus() zwar
+// document.activeElement, feuert aber keine focus/focusin-Events.
+function storeBoardFocus(board, r, c) {
+  if (board.id === 'the-board') battleBoardFocus = [r, c];
+  else placementBoardFocus = [r, c];
+}
+
+// Einmalig verdrahten: Pfeiltasten + Fokus-Position merken
+['the-board', 'placement-board'].forEach(id => {
+  const board = document.getElementById(id);
+  board.addEventListener('keydown', e => boardArrowNav(board, e));
+  board.addEventListener('focusin', e => {
+    if (e.target.dataset && e.target.dataset.r !== undefined) storeBoardFocus(board, +e.target.dataset.r, +e.target.dataset.c);
+  });
+});
 
 function pieceCellsG(p) {
   const f = FIGURES.find(x=>x.id===p.id);
@@ -2668,6 +2789,11 @@ function doMove(srcA, dstA, owner) {
   });
   gameState.pieces = gameState.pieces.filter(p => !killed.includes(p));
   mover.anchor = [...dstA];
+  // Screenreader: jeden Zug ansagen (Schläge werden zusätzlich per Toast angesagt)
+  const ownerTxt = owner === 'player'
+    ? (isLocalMultiplayer ? 'Spieler 1' : 'Du')
+    : (isLocalMultiplayer ? 'Spieler 2' : 'Gegner');
+  announce(`${ownerTxt}: ${moverFig ? moverFig.name : 'Figur'} zieht nach Zeile ${dstA[0]+1}, Spalte ${dstA[1]+1}`);
 }
 
 // Returns valid anchor destinations for piece at anchor [ar,ac] owned by `owner`.
