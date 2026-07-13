@@ -52,6 +52,12 @@
   .ep { width: 36px; height: 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; transition: border-color 0.1s; }
   .ep.sel { border-color: var(--accent2); background: rgba(220,38,38,0.15); }
 
+  .used-emojis { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .used-emoji { min-width: 30px; height: 30px; padding: 0 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 17px; cursor: default; }
+  .used-emoji.dupe { border-color: var(--gold); background: rgba(245,158,11,0.12); }
+
+  .lib-group-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); margin: 12px 0 2px; }
+
   .move-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; margin-top: 8px; }
   .mc { width: 100%; aspect-ratio: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: background 0.1s; user-select: none; }
   .mc.can { background: rgba(220,38,38,0.3); border-color: var(--accent2); }
@@ -123,12 +129,12 @@
         <div class="panel">
           <div class="panel-title">Basisdaten</div>
 
-          <label>Katalog-ID (1–33 = fester Basis-Katalog)</label>
+          <label>Katalog-ID (1–33 = fester Basis-Katalog, leer = Freier Katalog)</label>
           <div style="display:flex; gap:8px;">
-            <input type="number" id="f-catalog-id" placeholder="leer = reine NFC-Figur" min="1" max="33" oninput="updatePayload()" style="flex:1;">
+            <input type="number" id="f-catalog-id" placeholder="leer = Freier Katalog (ohne Nummer)" min="1" max="33" oninput="updatePayload()" style="flex:1;">
             <button type="button" class="btn secondary" style="width:auto; margin:0; padding:9px 12px;" onclick="suggestNextCatalogId()">Nächste frei</button>
           </div>
-          <div class="status" id="catalog-id-hint" style="margin-top:4px;">IDs 1–33 sind für den festen Basis-Katalog reserviert (33 Figuren gesamt). ID 1 (Cultwesen) &amp; ID 8 (Glitch) sind bereits fest in cultwars.html vergeben. Leer lassen = normale per-NFC-Sammelfigur außerhalb des Katalogs.</div>
+          <div class="status" id="catalog-id-hint" style="margin-top:4px;">IDs 1–33 sind für den festen Basis-Katalog reserviert (33 Figuren gesamt). ID 1 (Cultwesen) &amp; ID 8 (Glitch) sind bereits fest in cultwars.html vergeben. Leer lassen = Figur landet im <strong>Freien Katalog</strong>: ohne Nummer, nur per NFC-Tag sammelbar.</div>
 
           <label>Name der Figur</label>
           <input type="text" id="f-name" placeholder="z.B. Schattenwächter" oninput="updatePreview()">
@@ -136,6 +142,10 @@
           <label>Emoji / Sprite</label>
           <div class="emoji-pick" id="emoji-pick"></div>
           <input type="text" id="f-emoji" placeholder="oder eigenes Emoji eingeben" maxlength="2" oninput="selectCustomEmoji()" style="margin-top:6px;">
+          <div class="status" id="emoji-used-hint" style="margin-top:4px;"></div>
+
+          <label>Bereits verwendete Emojis</label>
+          <div class="used-emojis" id="used-emojis"></div>
 
           <label>Größe (Felder)</label>
           <div class="tag-list" id="size-tag-list">
@@ -393,7 +403,36 @@ function updatePreview() {
   document.getElementById('p-emoji').textContent = selectedEmoji;
   document.getElementById('p-name').textContent = name;
   document.getElementById('p-story').textContent = story;
+  renderUsedEmojis();
   updatePayload();
+}
+
+// Liste aller bereits vergebenen Emojis (Bibliothek + fest in cultwars.html) —
+// hilft beim Erstellen, Doppelungen zu vermeiden. Das aktuell gewählte Emoji
+// wird gelb hervorgehoben und unter dem Eingabefeld als Konflikt gemeldet
+// (die gerade bearbeitete Figur zählt dabei nicht als Konflikt mit sich selbst).
+function renderUsedEmojis() {
+  const wrap = document.getElementById('used-emojis');
+  const hint = document.getElementById('emoji-used-hint');
+  if (!wrap) return;
+  const used = new Map(); // emoji -> [Namen]
+  RESERVED_FIGURE_EMOJIS.forEach(x => used.set(x.emoji, [x.name]));
+  library.forEach(f => {
+    const names = used.get(f.emoji) || [];
+    names.push(f.name);
+    used.set(f.emoji, names);
+  });
+  wrap.innerHTML = '';
+  used.forEach((names, emoji) => {
+    const d = el('div', 'used-emoji' + (emoji === selectedEmoji ? ' dupe' : ''), emoji);
+    d.title = names.join(', ');
+    wrap.appendChild(d);
+  });
+  const conflicts = [
+    ...RESERVED_FIGURE_EMOJIS.filter(x => x.emoji === selectedEmoji).map(x => x.name),
+    ...library.filter(f => f.emoji === selectedEmoji && f.id !== editingId).map(f => f.name),
+  ];
+  hint.textContent = conflicts.length ? `⚠️ Emoji bereits verwendet von: ${conflicts.join(', ')}` : '';
 }
 
 const CATALOG_ID_MIN = 1;
@@ -402,6 +441,27 @@ const CATALOG_ID_MAX = 33;
 // und Glitch (id:8). Müssen hier von Hand gepflegt werden, falls sich die IDs
 // dort je wieder ändern — der Admin-Generator kennt cultwars.html nicht.
 const RESERVED_CATALOG_IDS = [1, 8];
+// Emojis der fest in cultwars.html vergebenen Figuren und der freischaltbaren
+// Cultwesen-Titel-Stufen (analog RESERVED_CATALOG_IDS, ebenfalls von Hand zu
+// pflegen — Quelle: KING_TITLE_TIERS in cultwars.html). Tauchen in der Liste
+// der verwendeten Emojis auf.
+const RESERVED_FIGURE_EMOJIS = [
+  { emoji: '👁️', name: 'Cultwesen — Basis / Titel "Gewöhnliches" (fest in cultwars.html)' },
+  { emoji: '👾', name: 'Glitch (fest in cultwars.html)' },
+  { emoji: '🤫', name: 'Cultwesen-Titel "Geheimnisvolles"' },
+  { emoji: '♟',  name: 'Cultwesen-Titel "Verspieltes"' },
+  { emoji: '🖤', name: 'Cultwesen-Titel "Verdorbenes"' },
+  { emoji: '☠️', name: 'Cultwesen-Titel "Verfluchtes"' },
+  { emoji: '🩸', name: 'Cultwesen-Titel "Blutrünstiges"' },
+  { emoji: '✨', name: 'Cultwesen-Titel "Übernatürliches"' },
+  { emoji: '🐍', name: 'Cultwesen-Titel "Hinterlistiges"' },
+  { emoji: '😱', name: 'Cultwesen-Titel "Entsetzliches"' },
+  { emoji: '👑', name: 'Cultwesen-Titel "Transzendentes"' },
+  { emoji: '🌌', name: 'Cultwesen-Titel "Kosmisches"' },
+  { emoji: '♾️', name: 'Cultwesen-Titel "Allgegenwärtiges"' },
+  { emoji: '😏', name: 'Cultwesen-Titel "Heißes"' },
+  { emoji: '🧿', name: 'Cultwesen-Titel "Allmächtiges"' },
+];
 
 // Während einer Bearbeitung (siehe editFig) hält dies die ursprüngliche ID der
 // bearbeiteten Figur, damit sie beim Speichern ersetzt statt dupliziert wird.
@@ -444,7 +504,11 @@ function editFig(id) {
   if (!fig) return;
   editingId = id;
   switchTab('create', document.querySelectorAll('.tabs .tab')[0]);
-  document.getElementById('f-catalog-id').value = fig.id;
+  // Freie-Katalog-Figuren haben nur eine interne Zeitstempel-ID — das
+  // Katalog-ID-Feld bleibt bei ihnen leer (buildFigureData behält die
+  // Original-ID über editingId).
+  const isCatalogFig = fig.id >= CATALOG_ID_MIN && fig.id <= CATALOG_ID_MAX;
+  document.getElementById('f-catalog-id').value = isCatalogFig ? fig.id : '';
   document.getElementById('f-name').value = fig.name;
   document.getElementById('f-story').value = fig.story || '';
   document.getElementById('f-emoji').value = fig.emoji;
@@ -521,6 +585,7 @@ function saveFigure() {
     const idx = library.findIndex(f => f.id === editingId);
     if (idx === -1) { library.push(fig); } else { library[idx] = fig; }
     localStorage.setItem('figuren_lib', JSON.stringify(library));
+    renderUsedEmojis();
     document.getElementById('create-status').textContent = `✅ "${fig.name}" aktualisiert.`;
     setTimeout(() => document.getElementById('create-status').textContent = '', 3000);
     cancelEdit();
@@ -528,7 +593,8 @@ function saveFigure() {
   }
   library.push(fig);
   localStorage.setItem('figuren_lib', JSON.stringify(library));
-  document.getElementById('create-status').textContent = `✅ "${fig.name}" gespeichert. (${library.length} in Bibliothek)`;
+  renderUsedEmojis();
+  document.getElementById('create-status').textContent = `✅ "${fig.name}" gespeichert. (${library.length} in Bibliothek${Number.isInteger(parseInt(document.getElementById('f-catalog-id').value, 10)) ? '' : ', Freier Katalog'})`;
   setTimeout(() => document.getElementById('create-status').textContent = '', 3000);
 }
 
@@ -582,19 +648,19 @@ function el(tag, cls, text) {
 
 function renderLibrary() {
   const list = document.getElementById('fig-library');
-  document.getElementById('lib-count').textContent = library.length + ' Figuren';
-  const catalogCount = library.filter(f => f.id >= CATALOG_ID_MIN && f.id <= CATALOG_ID_MAX).length;
+  const catalogFigs = library.filter(f => f.id >= CATALOG_ID_MIN && f.id <= CATALOG_ID_MAX).sort((a,b) => a.id - b.id);
+  const freeFigs = library.filter(f => !(f.id >= CATALOG_ID_MIN && f.id <= CATALOG_ID_MAX)).sort((a,b) => a.id - b.id);
+  document.getElementById('lib-count').textContent = `${library.length} Figuren (${catalogFigs.length} Basis-Katalog, ${freeFigs.length} Freier Katalog)`;
   const catalogSlots = CATALOG_ID_MAX - CATALOG_ID_MIN + 1 - RESERVED_CATALOG_IDS.length;
-  document.getElementById('catalog-progress').textContent = `🗂️ Basis-Katalog: ${RESERVED_CATALOG_IDS.length + catalogCount} / 33 Plätze belegt (${catalogCount} / ${catalogSlots} hier erstellt, ${RESERVED_CATALOG_IDS.length} fest in cultwars.html: Cultwesen, Glitch)`;
+  document.getElementById('catalog-progress').textContent = `🗂️ Basis-Katalog: ${RESERVED_CATALOG_IDS.length + catalogFigs.length} / 33 Plätze belegt (${catalogFigs.length} / ${catalogSlots} hier erstellt, ${RESERVED_CATALOG_IDS.length} fest in cultwars.html: Cultwesen, Glitch)`;
   list.innerHTML = '';
   if (library.length === 0) { list.appendChild(el('div', '', 'Noch keine Figuren gespeichert.')); list.firstChild.style.cssText = 'text-align:center;color:var(--text3);padding:30px;font-size:13px;'; return; }
-  library.slice().sort((a,b) => a.id - b.id).forEach(f => {
+  const addItem = (f, showId) => {
     const i = library.indexOf(f);
     const item = el('div', 'fig-item');
     item.appendChild(el('div', 'fig-item-emoji', f.emoji));
     const info = el('div', 'fig-item-info');
-    const isCatalog = f.id >= CATALOG_ID_MIN && f.id <= CATALOG_ID_MAX;
-    info.appendChild(el('div', 'fig-item-name', `${isCatalog ? `#${f.id} ` : ''}${f.name}`));
+    info.appendChild(el('div', 'fig-item-name', `${showId ? `#${f.id} ` : ''}${f.name}`));
     info.appendChild(el('div', 'fig-item-meta', `${f.size===1?'1×1':f.size===4?'2×2':'3×3'} · ${f.moveMode==='slide'?'Gleitet':'Springt'} · ${new Date(f.created).toLocaleDateString('de-DE')}`));
     item.appendChild(info);
     const actions = el('div', 'fig-item-actions');
@@ -612,7 +678,15 @@ function renderLibrary() {
     actions.appendChild(delBtn);
     item.appendChild(actions);
     list.appendChild(item);
-  });
+  };
+  if (catalogFigs.length) {
+    list.appendChild(el('div', 'lib-group-title', '🗂️ Basis-Katalog (mit Nummer)'));
+    catalogFigs.forEach(f => addItem(f, true));
+  }
+  if (freeFigs.length) {
+    list.appendChild(el('div', 'lib-group-title', '✨ Freier Katalog (ohne Nummer)'));
+    freeFigs.forEach(f => addItem(f, false));
+  }
 }
 
 function deleteFig(i) {
@@ -621,6 +695,7 @@ function deleteFig(i) {
   const wasEditing = editingId === fig.id;
   library.splice(i, 1);
   localStorage.setItem('figuren_lib', JSON.stringify(library));
+  renderUsedEmojis();
   renderLibrary();
   if (wasEditing) cancelEdit();
 }

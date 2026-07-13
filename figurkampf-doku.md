@@ -82,7 +82,7 @@ Eine Ausnahme ist `--player-rgb`: die Farbe der eigenen Spielfiguren auf dem Bre
 | Stufe | Titel | Emoji |
 |---|---|---|
 | 1 | Gewöhnliches | 👁 |
-| 2 | Geheimnisvolles | 🌙 |
+| 2 | Geheimnisvolles | 🤫 |
 | 3 | Verspieltes | ♟ |
 | 5 | Verdorbenes | 🖤 |
 | 8 | Verfluchtes | ☠️ |
@@ -93,7 +93,7 @@ Eine Ausnahme ist `--player-rgb`: die Farbe der eigenen Spielfiguren auf dem Bre
 | 20 | Transzendentes | 👑 |
 | 22 | Kosmisches | 🌌 |
 | 25 | Allgegenwärtiges | ♾️ |
-| 30 | Heißes | 🔥 |
+| 30 | Heißes | 😏 |
 | 33 | Allmächtiges | 🧿 |
 
 Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangestellt (z.B. "Verdorbenes Höchstes Cultwesen") und erscheint überall, wo der Figurenname angezeigt wird. Es gibt keine freie Name- oder Emoji-Eingabe mehr — auswählbar sind ausschließlich die freigeschalteten Titel-Stufen.
@@ -161,6 +161,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Multiplayer-Ergebnis-Rückkanal: Host zeigt nach Schlachtende automatisch einen Ergebnis-QR-Code, den der Sender scannt und in seine eigene Statistik übernimmt | ✅ |
 | Zug-Vorschau für Gegnerfiguren: Antippen zeigt deren mögliche Züge rot markiert (Info-Vorschau, kein Zugverbrauch; gilt in Solo und Local-Multiplayer, Glitch ausgenommen) | ✅ |
 | Schlag-Anzeige über die volle Zielfläche: Bei Mehrfelder-Figuren werden Züge rot markiert, wenn irgendein Feld der Zielfläche einen Gegner trifft; bedrohte Figuren bekommen einen gestrichelten Zielrahmen, Hover auf ein Zugziel zeigt die volle Zielfläche — gilt gleichermaßen für die Gegner-Vorschau (Schlag-Züge dort als gefüllter Punkt statt hohlem Ring) | ✅ |
+| Theorie-Anzeige: aktuell blockierte Muster-Züge (eigene Figur am Ziel bzw. versperrter Gleitweg) erscheinen als dezentes graues Kreuz über den Figuren-Emojis — bei Auswahl und Gegner-Vorschau | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
@@ -176,6 +177,8 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Bewegungsart wählbar: Springt (Standard) / Gleitet (wird blockiert) | ✅ |
 | König-Flag ("Ist der König") mit frei wählbarem Emoji, goldene Hervorhebung in Vorschau + Bibliothek | ✅ |
 | 31 Standardfiguren als `DEFAULT_FIGURES` fest eingebaut, werden beim Laden in die Bibliothek gemergt und sind dort normal bearbeitbar (gelöschte Standardfiguren kommen beim nächsten Laden im Originalzustand zurück) | ✅ |
+| Liste aller bereits verwendeten Emojis im Erstellen-Tab (inkl. fest vergebener: Cultwesen, Glitch) mit Duplikat-Warnung unter dem Emoji-Feld | ✅ |
+| Freier Katalog: Figuren ohne Katalog-Nummer (Katalog-ID-Feld leer lassen; intern Zeitstempel-ID, nur per NFC sammelbar), eigene Gruppe in der Bibliothek | ✅ |
 
 ---
 

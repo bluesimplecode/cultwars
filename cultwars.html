@@ -611,6 +611,12 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .board-cell.movable { background: rgba(16,185,129,0.25) !important; position: relative; }
   .board-cell.movable::after { content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%; background: rgba(16,185,129,0.7); }
   .board-cell.enemy-sel { background: rgba(239,68,68,0.25) !important; }
+  /* Theoretische Züge des Bewegungsmusters, die gerade blockiert sind (eigene
+     Figur auf dem Ziel bzw. Gleitweg versperrt): dezentes graues Kreuz.
+     z-index hebt es über die Piece-Overlays, damit es auch auf Feldern mit
+     Emoji sichtbar bleibt (die Overlays selbst sind pointer-events:none). */
+  .board-cell.theory-move { position: relative; }
+  .board-cell.theory-move::after { content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(148,163,184,0.5); font-size: 16px; font-weight: 700; z-index: 2; pointer-events: none; }
   /* Figuren, die von mindestens einem Zug der ausgewählten (bzw. in der Vorschau
      angetippten) Figur getroffen würden: gestrichelter roter Zielrahmen */
   .board-cell.capture-target { position: relative; }
@@ -1031,7 +1037,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 // FIGURES = der Kodex / Katalog aller existierenden Figuren-Vorlagen.
 // Diese Daten ändern sich nie zur Laufzeit (außer durch den Admin-Generator / NFC-Scan neuer Templates).
 const FIGURES_CATALOG = [
-  { id:1, name:'Cultwesen', emoji:'👑', size:1, moveMode:'jump', isKing:true,
+  { id:1, name:'Cultwesen', emoji:'👁️', size:1, moveMode:'jump', isKing:true,
     story:'Das Cultwesen, dessen Wille die anderen Figuren lenkt. Fällt es, zerfällt die gesamte Ordnung.',
     move:[[0,0,0,0,0],[0,1,1,1,0],[0,1,2,1,0],[0,1,1,1,0],[0,0,0,0,0]] },
   // Standardfiguren (ids 2-7, 9-33): fest eingebauter Basis-Katalog,
@@ -1292,7 +1298,10 @@ function rebuildFigures() {
     // Das höchste Cultwesen bekommt Emoji + Titel ausschließlich über die
     // mit dem Sammelfortschritt freigeschalteten Titel-Stufen (siehe
     // KING_TITLE_TIERS) — kein frei wählbarer Name oder eigenes Emoji.
-    const emoji = owned.emoji || f.emoji;
+    // Das Emoji wird über den Titel aufgelöst (nicht über den gespeicherten
+    // Wert), damit geänderte Tier-Emojis auch alte Speicherstände erreichen.
+    const tier = owned.title ? KING_TITLE_TIERS.find(t => t.title === owned.title) : null;
+    const emoji = (tier && tier.emoji) || owned.emoji || f.emoji;
     const name = owned.title ? `${owned.title} ${f.name}` : f.name;
     return { ...f, emoji, name, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned };
   });
@@ -1312,7 +1321,7 @@ const MAX_CORRUPTION_STAGE = 33;
 // neue Titel+Emoji-Kombinationen frei, die der Spieler auswählen kann.
 const KING_TITLE_TIERS = [
   { stage:1,  title:'Gewöhnliches',     emoji:'👁️' },
-  { stage:2,  title:'Geheimnisvolles',  emoji:'🌙' },
+  { stage:2,  title:'Geheimnisvolles',  emoji:'🤫' },
   { stage:3,  title:'Verspieltes',      emoji:'♟' },
   { stage:5,  title:'Verdorbenes',      emoji:'🖤' },
   { stage:8,  title:'Verfluchtes',      emoji:'☠️' },
@@ -1323,7 +1332,7 @@ const KING_TITLE_TIERS = [
   { stage:20, title:'Transzendentes',   emoji:'👑' },
   { stage:22, title:'Kosmisches',       emoji:'🌌' },
   { stage:25, title:'Allgegenwärtiges', emoji:'♾️' },
-  { stage:30, title:'Heißes',           emoji:'🔥' },
+  { stage:30, title:'Heißes',           emoji:'😏' },
   { stage:33, title:'Allmächtiges',     emoji:'🧿' },
 ];
 
@@ -2427,10 +2436,17 @@ function renderBoard() {
   const selSpan = selPiece ? figSpan(FIGURES.find(x=>x.id===selPiece.id)||{size:1}) : 1;
   const captureMoves = new Set();
   const threatened = new Set();
+  // Theoretische Züge (ohne blockierende Figuren, nur Brettgrenzen): werden
+  // dezent angezeigt, damit das Bewegungsmuster trotz Blockaden erkennbar ist.
+  const theorySet = new Set();
   if (selPiece) {
     moves.forEach(([mr,mc]) => {
       const hits = figCells(selSpan, mr, mc).filter(([r,c])=>enemyOcc.has(r+','+c));
       if (hits.length) { captureMoves.add(mr+','+mc); hits.forEach(([r,c])=>threatened.add(r+','+c)); }
+    });
+    getMovesFor(selectedCell, currentTurn, true).forEach(([r,c]) => {
+      const k = r+','+c;
+      if (!moveSet.has(k)) theorySet.add(k);
     });
   }
 
@@ -2453,6 +2469,10 @@ function renderBoard() {
         const hits = figCells(previewSpan, mr, mc).filter(([r,c])=>ownOcc.has(r+','+c));
         if (hits.length) { previewCaptureSet.add(mr+','+mc); hits.forEach(([r,c])=>threatened.add(r+','+c)); }
       });
+      getMovesFor(previewCell, opponentOf, true).forEach(([r,c]) => {
+        const k = r+','+c;
+        if (!previewSet.has(k)) theorySet.add(k);
+      });
     }
   }
 
@@ -2473,6 +2493,7 @@ function renderBoard() {
         cell.addEventListener('mouseleave', () => board.querySelectorAll('.move-target').forEach(el=>el.classList.remove('move-target')));
       }
     }
+    if (theorySet.has(key)) cell.classList.add('theory-move');
     if (threatened.has(key)) cell.classList.add('capture-target');
     if (previewBodySet.has(key)) cell.classList.add('preview-src');
     // Kein else: kurze Züge großer Figuren haben ihr Anker-Feld innerhalb der
@@ -2566,8 +2587,11 @@ function doMove(srcA, dstA, owner) {
   mover.anchor = [...dstA];
 }
 
-// Returns valid anchor destinations for piece at anchor [ar,ac] owned by `owner`
-function getMovesFor([ar, ac], owner) {
+// Returns valid anchor destinations for piece at anchor [ar,ac] owned by `owner`.
+// Mit ignoreBlocking=true liefert sie stattdessen die theoretischen Zugziele des
+// Bewegungsmusters (nur Brettgrenzen gelten) — für die dezente Anzeige, welche
+// Züge ohne blockierende Figuren möglich wären.
+function getMovesFor([ar, ac], owner, ignoreBlocking = false) {
   const p = gameState.pieces.find(x=>x.anchor[0]===ar&&x.anchor[1]===ac&&x.owner===owner);
   if (!p) return [];
   const fig = FIGURES.find(f=>f.id===p.id);
@@ -2580,13 +2604,15 @@ function getMovesFor([ar, ac], owner) {
   const cr = ar + centerOffset, cc = ac + centerOffset;
 
   const ownOcc = new Set();
-  gameState.pieces.filter(x=>x.owner===owner&&x!==p).forEach(x=>pieceCellsG(x).forEach(([r,c])=>ownOcc.add(r+','+c)));
+  if (!ignoreBlocking) {
+    gameState.pieces.filter(x=>x.owner===owner&&x!==p).forEach(x=>pieceCellsG(x).forEach(([r,c])=>ownOcc.add(r+','+c)));
+  }
 
   // Für Gleit-Figuren (moveMode:'slide'): alle belegten Felder beider Seiten,
   // um den Weg zwischen Start und Ziel auf Blockaden zu prüfen. Sprung-Figuren
   // (Standard) ignorieren andere Figuren zwischen Start und Ziel komplett.
   let allOcc = null;
-  if (fig.moveMode === 'slide') {
+  if (fig.moveMode === 'slide' && !ignoreBlocking) {
     allOcc = new Set();
     gameState.pieces.filter(x=>x!==p).forEach(x=>pieceCellsG(x).forEach(([r,c])=>allOcc.add(r+','+c)));
   }
