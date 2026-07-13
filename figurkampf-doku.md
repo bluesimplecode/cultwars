@@ -162,6 +162,7 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Zug-Vorschau für Gegnerfiguren: Antippen zeigt deren mögliche Züge rot markiert (Info-Vorschau, kein Zugverbrauch; gilt in Solo und Local-Multiplayer, Glitch ausgenommen) | ✅ |
 | Schlag-Anzeige über die volle Zielfläche: Bei Mehrfelder-Figuren werden Züge rot markiert, wenn irgendein Feld der Zielfläche einen Gegner trifft; bedrohte Figuren bekommen einen gestrichelten Zielrahmen, Hover auf ein Zugziel zeigt die volle Zielfläche — gilt gleichermaßen für die Gegner-Vorschau (Schlag-Züge dort als gefüllter Punkt statt hohlem Ring) | ✅ |
 | Theorie-Anzeige: aktuell blockierte Muster-Züge (eigene Figur am Ziel bzw. versperrter Gleitweg) erscheinen als dezentes graues Kreuz über den Figuren-Emojis — bei Auswahl und Gegner-Vorschau | ✅ |
+| Screenreader-Grundgerüst (Stufe 1): aria-live-Region für Toasts + Zugwechsel, Sammlung/Kodex-Karten und Filter als fokussierbare Buttons mit Labels, Figuren-Modal als Dialog mit Fokusfalle, Escape und Fokus-Rückgabe. Offen: Stufe 2 (Brett/Platzierung per Tastatur + Zellen-Labels), Test mit TalkBack auf echtem Gerät | ✅ |
 
 ### Admin-Generator (`figuren-admin.html`)
 
@@ -210,6 +211,7 @@ Gesamtgröße der Haupt-App-Datei: ~250 KB (inkl. eingebetteter QR-Bibliotheken 
 - [ ] Platzierungsphase im Multiplayer: Gegner-Startpositionen für den Sender visuell anzeigen (er sieht nur sein eigenes Feld, nicht das des Hosts)
 - [x] Zugzwang-Prüfung — `checkStalemate()` läuft bei jedem `beginTurn()`; hat die am Zug befindliche Seite keine gültige Bewegung mehr (`hasAnyLegalMove()`, Glitch-Figuren zählen nicht mit), verliert sie die Schlacht sofort, genau wie beim Königsfall
 - [ ] Figuren-Sync zwischen Admin-Tool und Haupt-App (aktuell manuell per NFC-Tag; könnte via exportiertem JSON-Import oder geteiltem localStorage-Namespace gehen)
+- [ ] Screenreader Stufe 2: Spielbrett + Platzierungsphase per Tastatur bedienbar (role=grid, Zellen-Labels mit Koordinate/Figur/Zugstatus, Pfeiltasten-Navigation); danach Test mit TalkBack auf echtem Android-Gerät
 
 **Langfristig / Nice-to-have**
 - [ ] Figuren-Katalog im Admin-Tool per QR-Code exportieren (statt nur NFC), damit auch Geräte ohne NFC neue Figuren erhalten können

@@ -667,6 +667,8 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   .badges::-webkit-scrollbar { display: none; }
   .badge { flex-shrink: 0; padding: 5px 12px; border-radius: 20px; font-size: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text2); cursor: pointer; white-space: nowrap; }
   .badge.active { background: rgba(var(--accent-rgb),0.2); border-color: var(--accent2); color: var(--accent2); }
+  /* Nur für Screenreader: visuell versteckt, aber vorlesbar (u.a. Live-Region) */
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 
   .board-cell.place-zone { background: rgba(16,185,129,0.12) !important; cursor: pointer; }
   .board-cell.place-zone:active { background: rgba(16,185,129,0.3) !important; }
@@ -711,11 +713,11 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     <span style="font-size: 12px; color: var(--text2);">Alle anzeigen</span>
   </div>
 
-  <div class="badges" id="filter-badges">
-    <div class="badge active" onclick="filterFigs(this,'alle')">Alle</div>
-    <div class="badge" onclick="filterFigs(this,'1')">1×1</div>
-    <div class="badge" onclick="filterFigs(this,'4')">2×2</div>
-    <div class="badge" onclick="filterFigs(this,'9')">3×3</div>
+  <div class="badges" id="filter-badges" role="group" aria-label="Nach Größe filtern">
+    <div class="badge active" role="button" tabindex="0" aria-pressed="true" onclick="filterFigs(this,'alle')">Alle</div>
+    <div class="badge" role="button" tabindex="0" aria-pressed="false" onclick="filterFigs(this,'1')">1×1</div>
+    <div class="badge" role="button" tabindex="0" aria-pressed="false" onclick="filterFigs(this,'4')">2×2</div>
+    <div class="badge" role="button" tabindex="0" aria-pressed="false" onclick="filterFigs(this,'9')">3×3</div>
   </div>
 
   <div class="fig-grid" id="fig-grid"></div>
@@ -762,11 +764,11 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 
     <div style="padding: 10px 16px 6px; display:flex; align-items:center; gap:8px;">
       <div style="font-size:12px; color:var(--text2); flex-shrink:0;">Figur wählen:</div>
-      <div class="badges" id="placement-filter-badges" style="margin-bottom:0; padding:0;">
-        <div class="badge active" onclick="filterPlacementFigs(this,'alle')">Alle</div>
-        <div class="badge" onclick="filterPlacementFigs(this,'1')">1×1</div>
-        <div class="badge" onclick="filterPlacementFigs(this,'4')">2×2</div>
-        <div class="badge" onclick="filterPlacementFigs(this,'9')">3×3</div>
+      <div class="badges" id="placement-filter-badges" style="margin-bottom:0; padding:0;" role="group" aria-label="Hand nach Größe filtern">
+        <div class="badge active" role="button" tabindex="0" aria-pressed="true" onclick="filterPlacementFigs(this,'alle')">Alle</div>
+        <div class="badge" role="button" tabindex="0" aria-pressed="false" onclick="filterPlacementFigs(this,'1')">1×1</div>
+        <div class="badge" role="button" tabindex="0" aria-pressed="false" onclick="filterPlacementFigs(this,'4')">2×2</div>
+        <div class="badge" role="button" tabindex="0" aria-pressed="false" onclick="filterPlacementFigs(this,'9')">3×3</div>
       </div>
     </div>
     <div style="display:flex; gap:8px; padding:0 16px 12px; overflow-x:auto; scrollbar-width:none;" id="placement-hand"></div>
@@ -867,9 +869,12 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   </div>
 </div>
 
+<!-- Screenreader-Live-Region: bekommt Toasts und Zugwechsel gespiegelt -->
+<div id="sr-announcer" class="visually-hidden" aria-live="polite"></div>
+
 <!-- Nav -->
-<nav class="nav">
-  <button class="nav-btn active" onclick="goPage('sammeln',this)">
+<nav class="nav" aria-label="Hauptnavigation">
+  <button class="nav-btn active" aria-current="page" onclick="goPage('sammeln',this)">
     <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
     Sammeln
   </button>
@@ -893,7 +898,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
 
 <!-- Figure modal -->
 <div class="modal-overlay" id="fig-modal" onclick="closeFigModal(event)">
-  <div class="modal" id="modal-inner">
+  <div class="modal" id="modal-inner" role="dialog" aria-modal="true" aria-labelledby="m-name">
     <div class="modal-handle"></div>
     <div class="modal-emoji" id="m-emoji"></div>
     <div class="modal-name" id="m-name"></div>
@@ -909,7 +914,7 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     <div class="modal-story" id="m-story"></div>
 
     <div class="modal-section">Bewegungsmuster</div>
-    <div class="modal-move" id="m-move"></div>
+    <div class="modal-move" id="m-move" role="img" aria-label="Bewegungsmuster als 5×5-Raster (visuelle Darstellung)"></div>
 
     <div class="modal-section">Kampfstatistiken</div>
     <div id="m-stats"></div>
@@ -1483,9 +1488,10 @@ function goPage(name, btn) {
   // Kamera trotzdem gestoppt werden.
   stopScan();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
   document.getElementById('page-'+name).classList.add('active');
   btn.classList.add('active');
+  btn.setAttribute('aria-current', 'page');
   // Bei jedem Seitenwechsel mit aktuellen (persistierten) Daten neu rendern
   if (name === 'sammeln') renderCollection();
   if (name === 'kodex') renderKodex();
@@ -1505,6 +1511,10 @@ function renderCollection() {
   owned.forEach(f => {
     const d = document.createElement('div');
     d.className = 'fig-card' + (f.new ? ' new' : '') + (f.isKing ? ' king-glow' : '');
+    d.setAttribute('role', 'button');
+    d.setAttribute('tabindex', '0');
+    d.setAttribute('aria-label', `${f.name}, ${sizeLabel(f.size)}, ${f.kills} Kills${f.new ? ', neu' : ''}${f.isKing ? ', dein Cultwesen' : ''} — Details öffnen`);
+    d.dataset.size = f.size;
     d.appendChild(el('span', 'fig-emoji', f.emoji));
     d.appendChild(el('span', 'fig-name', f.name));
     d.appendChild(el('span', 'fig-power', `${f.kills} Kills`));
@@ -1529,8 +1539,11 @@ function renderKodex() {
   grid.innerHTML = '';
   FIGURES.forEach(f => {
     const d = document.createElement('div');
+    d.setAttribute('role', 'button');
+    d.setAttribute('tabindex', '0');
     if (f.owned) {
       d.className = 'fig-card' + (f.isKing ? ' king-glow' : '');
+      d.setAttribute('aria-label', `${f.name}, ${sizeLabel(f.size)}, ${f.kills} Kills, gesammelt — Details öffnen`);
       d.appendChild(el('span', 'fig-emoji', f.emoji));
       d.appendChild(el('span', 'fig-name', f.name));
       d.appendChild(el('span', 'fig-power', sizeLabel(f.size)));
@@ -1540,6 +1553,7 @@ function renderKodex() {
       // Unbekannte Figur: nur Silhouette, keine Details
       d.className = 'fig-card';
       d.style.opacity = '0.4';
+      d.setAttribute('aria-label', `Unbekannte Figur, ${sizeLabel(f.size)}, noch nicht gesammelt`);
       const emojiSpan = el('span', 'fig-emoji', '❓');
       emojiSpan.style.filter = 'grayscale(1) brightness(0.3)';
       d.appendChild(emojiSpan);
@@ -1597,6 +1611,9 @@ function el(tag, cls, text) {
   return e;
 }
 
+// Element, das den Fokus zurückbekommt, wenn das Figuren-Modal schließt
+let modalReturnFocus = null;
+
 function openFigModal(f) {
   currentFig = f;
   document.getElementById('m-emoji').textContent = f.emoji;
@@ -1618,11 +1635,17 @@ function openFigModal(f) {
       const unlocked = extra >= tier.stage;
       const d = document.createElement('div');
       d.className = 'ktier' + (!unlocked ? ' locked' : '') + (unlocked && currentTitle===tier.title ? ' sel' : '');
+      d.setAttribute('role', 'button');
       if (unlocked) {
         d.innerHTML = `<span class="kt-emoji">${tier.emoji}</span><span>${tier.title}</span><span class="kt-stage">Stufe ${tier.stage}</span>`;
+        d.setAttribute('tabindex', '0');
+        d.setAttribute('aria-pressed', currentTitle===tier.title ? 'true' : 'false');
+        d.setAttribute('aria-label', `Titel ${tier.title} wählen, Stufe ${tier.stage}${currentTitle===tier.title ? ', aktuell gewählt' : ''}`);
         d.onclick = () => setKingTitle(f.id, tier.title, tier.emoji);
       } else {
         d.innerHTML = `<span class="kt-emoji">🔒</span><span>???</span><span class="kt-stage">Stufe ${tier.stage}</span>`;
+        d.setAttribute('aria-disabled', 'true');
+        d.setAttribute('aria-label', `Gesperrter Titel, wird bei Stufe ${tier.stage} freigeschaltet`);
       }
       list.appendChild(d);
     });
@@ -1641,7 +1664,16 @@ function openFigModal(f) {
     <div class="stat-row"><div class="stat-emoji">⚔️</div><div class="stat-info"><div class="stat-name">Kills gesamt</div><div class="stat-nums">${f.kills}</div></div></div>
     <div class="stat-row"><div class="stat-emoji">🎯</div><div class="stat-info"><div class="stat-name">Mal gewählt</div><div class="stat-nums">${f.uses}</div></div></div>`;
 
-  document.getElementById('fig-modal').classList.add('open');
+  const modal = document.getElementById('fig-modal');
+  const wasOpen = modal.classList.contains('open');
+  modal.classList.add('open');
+  // Fokus nur beim ersten Öffnen setzen — refreshKingViews() rendert das
+  // Modal auch bei Titelwechsel neu, dabei soll der Fokus nicht springen.
+  if (!wasOpen) {
+    modalReturnFocus = document.activeElement;
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) closeBtn.focus();
+  }
 }
 
 // Speichert das vom Spieler gewählte Emoji für sein höchstes Cultwesen
@@ -1664,17 +1696,45 @@ function setKingTitle(figId, title, emoji) {
 }
 
 function closeFigModal(e) { if(e.target===document.getElementById('fig-modal')) closeModal(); }
-function closeModal() { document.getElementById('fig-modal').classList.remove('open'); }
+function closeModal() {
+  document.getElementById('fig-modal').classList.remove('open');
+  // Fokus dorthin zurückgeben, wo er vor dem Öffnen war (Screenreader/Tastatur)
+  if (modalReturnFocus && document.contains(modalReturnFocus)) modalReturnFocus.focus();
+  modalReturnFocus = null;
+}
 
 function filterFigs(el, type) {
-  document.querySelectorAll('#filter-badges .badge').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#filter-badges .badge').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
   el.classList.add('active');
+  el.setAttribute('aria-pressed', 'true');
   const grid = document.getElementById('fig-grid');
-  [...grid.children].forEach((c, i) => {
-    const f = FIGURES[i];
-    c.style.display = (type==='alle' || String(f.size)===type) ? '' : 'none';
+  // Größe kommt aus data-size der Karte selbst — das Grid enthält nur besessene
+  // Figuren, ein Index-Zugriff auf FIGURES würde daneben greifen.
+  [...grid.children].forEach(c => {
+    c.style.display = (type==='alle' || c.dataset.size===type) ? '' : 'none';
   });
 }
+
+// Tastatur-Bedienung: [role=button]-Elemente mit Enter/Leertaste auslösen,
+// Escape schließt das Figuren-Modal, Tab bleibt im offenen Modal (Fokusfalle).
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target instanceof Element && e.target.matches('[role="button"]')) {
+    e.preventDefault();
+    e.target.click();
+    return;
+  }
+  const modal = document.getElementById('fig-modal');
+  if (!modal.classList.contains('open')) return;
+  if (e.key === 'Escape') { closeModal(); return; }
+  if (e.key === 'Tab') {
+    const focusables = [...modal.querySelectorAll('button, [role="button"]:not([aria-disabled="true"])')].filter(x => x.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    else if (!modal.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  }
+});
 
 // ---------------------------------------------------------------
 // ECHTES NFC (Web NFC API)
@@ -1794,6 +1854,26 @@ function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
+  announce(msg);
+}
+
+// Screenreader-Ansage über die aria-live-Region. Kurz aufeinanderfolgende
+// Meldungen (z.B. Schlag-Toast + Zugwechsel) werden gesammelt und als eine
+// Ansage ausgegeben, damit sie sich nicht gegenseitig überschreiben.
+let srQueue = [];
+let srFlushTimer = null;
+function announce(msg) {
+  const region = document.getElementById('sr-announcer');
+  if (!region || !msg) return;
+  srQueue.push(msg);
+  clearTimeout(srFlushTimer);
+  srFlushTimer = setTimeout(() => {
+    const text = srQueue.join('. ');
+    srQueue = [];
+    // Erst leeren, damit auch ein identischer Text erneut vorgelesen wird
+    region.textContent = '';
+    setTimeout(() => { region.textContent = text; }, 30);
+  }, 50);
 }
 
 // --- Helpers ---
@@ -1950,7 +2030,7 @@ function launchGame() {
   placementUsed = new Set();
   placementSelected = null;
   placementSizeFilter = 'alle';
-  document.querySelectorAll('#placement-filter-badges .badge').forEach((b, i) => b.classList.toggle('active', i === 0));
+  document.querySelectorAll('#placement-filter-badges .badge').forEach((b, i) => { b.classList.toggle('active', i === 0); b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false'); });
   pieces = [];
 
   if (mpMode === 'sender' || mpMode === 'host') {
@@ -2074,8 +2154,9 @@ function clearPlacement() {
 let placementSizeFilter = 'alle';
 
 function filterPlacementFigs(el, type) {
-  document.querySelectorAll('#placement-filter-badges .badge').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#placement-filter-badges .badge').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
   el.classList.add('active');
+  el.setAttribute('aria-pressed', 'true');
   placementSizeFilter = type;
   // Eine ausgefilterte Figur soll nicht unsichtbar ausgewählt bleiben
   if (placementSelected) {
@@ -2284,10 +2365,12 @@ function updateTurnUI() {
     dot.style.background = 'var(--accent2)';
     owner.textContent = isLocalMultiplayer ? '🟣 Spieler 1 ist am Zug' : '🟣 Du bist am Zug';
     msg.textContent = 'Wähle eine deiner Figuren zum Bewegen';
+    announce((isLocalMultiplayer ? 'Spieler 1 ist am Zug' : 'Du bist am Zug') + ` — Runde ${roundNum}`);
   } else {
     dot.style.background = 'var(--red)';
     owner.textContent = isLocalMultiplayer ? '🔴 Spieler 2 ist am Zug' : '🔴 Gegner ist am Zug';
     msg.textContent = isLocalMultiplayer ? 'Gib das Gerät weiter' : 'Der Gegner überlegt...';
+    announce(isLocalMultiplayer ? 'Spieler 2 ist am Zug — gib das Gerät weiter' : 'Der Gegner ist am Zug');
   }
   label.textContent = `Runde ${roundNum}`;
 }
