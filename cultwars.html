@@ -501,6 +501,50 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     transition: opacity 2.5s ease;
   }
   body.deep-corruption::before { animation: occultFlicker 5s ease-in-out infinite; }
+
+  /* Blut-Layer: ab Korruptionsstufe 10 laufen vereinzelt Tropfen vom oberen
+     Rand herunter, Anzahl und Deckkraft wachsen mit der Stufe (siehe
+     updateBloodLayer). Liegt über dem Inhalt, aber unter Nav/Modals/Toast
+     und fängt keine Eingaben ab. */
+  #blood-layer { position: fixed; inset: 0; pointer-events: none; z-index: 90; overflow: hidden; }
+  .blood-drip {
+    position: absolute; top: 0; width: 3px; height: 13vh; border-radius: 0 0 3px 3px;
+    background: linear-gradient(to bottom, rgba(110,5,5,0), rgba(110,5,5,0.8) 35%, rgba(150,12,12,0.95));
+    opacity: var(--drip-opacity, 0.6);
+    transform: translateY(-110%);
+    animation: bloodRun var(--drip-duration, 16s) ease-in var(--drip-delay, 0s) infinite;
+  }
+  .blood-drip::after {
+    content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+    width: 7px; height: 10px; border-radius: 50% 50% 60% 60%;
+    background: radial-gradient(circle at 50% 35%, #a51212, #5f0404);
+  }
+  @keyframes bloodRun {
+    0% { transform: translateY(-110%); }
+    60% { transform: translateY(105vh); }
+    100% { transform: translateY(105vh); }
+  }
+  /* Blutflecken: ab Stufe 16 blühen vereinzelt dunkle Flecken auf und
+     verblassen wieder (Anzahl wächst mit der Stufe, siehe updateBloodLayer) */
+  .blood-stain {
+    position: absolute; border-radius: 50%;
+    width: var(--stain-size, 110px); height: var(--stain-size, 110px);
+    background: radial-gradient(circle, rgba(120,8,8,0.55), rgba(90,4,4,0.28) 55%, transparent 72%);
+    filter: blur(1px);
+    opacity: 0;
+    animation: stainBloom var(--stain-duration, 30s) ease-in-out var(--stain-delay, 0s) infinite;
+  }
+  @keyframes stainBloom {
+    0%, 100% { opacity: 0; transform: scale(0.7); }
+    12% { opacity: var(--stain-opacity, 0.3); transform: scale(1); }
+    45% { opacity: var(--stain-opacity, 0.3); }
+    70% { opacity: 0; transform: scale(1.06); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* Ohne Bewegung: kurze statische Blutspuren und schwache statische Flecken */
+    .blood-drip { animation: none; transform: translateY(-55%); }
+    .blood-stain { animation: none; opacity: calc(var(--stain-opacity, 0.3) * 0.5); }
+  }
   @keyframes occultFlicker {
     0%, 45%, 100% { opacity: var(--vignette-opacity, 0); }
     47% { opacity: calc(var(--vignette-opacity, 0) * 0.8); }
@@ -514,6 +558,16 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     0%, 92%, 100% { text-shadow: 0 0 12px rgba(220,38,38,0.5); }
     94% { text-shadow: 0 0 2px rgba(220,38,38,0.15); }
     96% { text-shadow: 0 0 18px rgba(220,38,38,0.85); }
+  }
+  /* Stufe 30+: der Titel zuckt zusätzlich gelegentlich kurz zur Seite
+     (der prefers-reduced-motion-Block unten deckt auch diese Animation ab) */
+  body.max-corruption .header h1 {
+    animation: titleFlicker 6s ease-in-out infinite, titleTwitch 7s linear infinite;
+  }
+  @keyframes titleTwitch {
+    0%, 90.5%, 92.5%, 100% { transform: none; }
+    91% { transform: translateX(-2px) skewX(-3deg); }
+    92% { transform: translateX(2px) skewX(2deg); }
   }
   @media (prefers-reduced-motion: reduce) {
     body::before, body .header h1 { animation: none !important; }
@@ -1416,6 +1470,55 @@ function applyCorruptionTheme() {
   // leicht sichtbar ist, statt bei Spielstart komplett unsichtbar zu sein (0).
   set('--bg-image-opacity', (0.15 + t*0.40).toFixed(3));
   body.classList.toggle('deep-corruption', extra >= 20);
+  body.classList.toggle('max-corruption', extra >= 30);
+  updateBloodLayer(extra);
+}
+
+// Ab dieser Korruptionsstufe beginnt Blut zu laufen (passend zum
+// "Blutrünstiges"-Titel bei Stufe 10); bis Stufe 33 werden es mehr Tropfen.
+// Ab STAIN_START_STAGE blühen zusätzlich Blutflecken auf.
+const BLOOD_START_STAGE = 10;
+const STAIN_START_STAGE = 16;
+
+function updateBloodLayer(stage) {
+  let layer = document.getElementById('blood-layer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'blood-layer';
+    document.body.appendChild(layer);
+  }
+  const dripCount = stage < BLOOD_START_STAGE ? 0 : Math.min(8, 1 + Math.floor((stage - BLOOD_START_STAGE) / 3));
+  const stainCount = stage < STAIN_START_STAGE ? 0 : Math.min(6, 1 + Math.floor((stage - STAIN_START_STAGE) / 4));
+  // Nur neu aufbauen, wenn sich die Anzahlen ändern — applyCorruptionTheme läuft
+  // bei jedem rebuildFigures, ein Neuaufbau würde die Animationen zurücksetzen.
+  if (layer.dataset.drips === String(dripCount) && layer.dataset.stains === String(stainCount)) return;
+  layer.dataset.drips = dripCount;
+  layer.dataset.stains = stainCount;
+  layer.innerHTML = '';
+  for (let i = 0; i < dripCount; i++) {
+    const d = document.createElement('div');
+    d.className = 'blood-drip';
+    d.setAttribute('aria-hidden', 'true');
+    d.style.left = (3 + Math.random() * 94).toFixed(1) + '%';
+    d.style.setProperty('--drip-duration', (12 + Math.random() * 18).toFixed(1) + 's');
+    // Negativer Delay: die Tropfen sind beim Aufbau schon mitten im Lauf,
+    // statt alle gleichzeitig am oberen Rand zu starten.
+    d.style.setProperty('--drip-delay', (-Math.random() * 25).toFixed(1) + 's');
+    d.style.setProperty('--drip-opacity', Math.min(0.8, 0.35 + stage / 60).toFixed(2));
+    layer.appendChild(d);
+  }
+  for (let i = 0; i < stainCount; i++) {
+    const s = document.createElement('div');
+    s.className = 'blood-stain';
+    s.setAttribute('aria-hidden', 'true');
+    s.style.left = (Math.random() * 85).toFixed(1) + '%';
+    s.style.top = (Math.random() * 80).toFixed(1) + '%';
+    s.style.setProperty('--stain-size', Math.round(60 + Math.random() * 100) + 'px');
+    s.style.setProperty('--stain-duration', (22 + Math.random() * 20).toFixed(1) + 's');
+    s.style.setProperty('--stain-delay', (-Math.random() * 30).toFixed(1) + 's');
+    s.style.setProperty('--stain-opacity', Math.min(0.4, 0.18 + stage / 120).toFixed(2));
+    layer.appendChild(s);
+  }
 }
 
 rebuildFigures();

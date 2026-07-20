@@ -75,6 +75,14 @@ Technisch: `applyCorruptionTheme()` läuft bei jedem `rebuildFigures()`-Aufruf, 
 
 Eine Ausnahme ist `--player-rgb`: die Farbe der eigenen Spielfiguren auf dem Brett ist bewusst von der allgemeinen Akzentfarbe entkoppelt (bleibt violett/magenta statt nach Rot zu wandern), damit sie bei hoher Korruptionsstufe nicht mit der (fest roten) Gegnerfarbe verschmilzt.
 
+**Blut-Layer:** Ab Korruptionsstufe 10 (thematisch passend zum „Blutrünstiges"-Titel) laufen vereinzelt Blutstropfen vom oberen Bildschirmrand herunter (`#blood-layer`, fixed, `z-index:90` — über dem Inhalt, unter Nav/Modals/Toast, `pointer-events:none`). `updateBloodLayer()` läuft in `applyCorruptionTheme()`: Anzahl wächst von 1 Tropfen (Stufe 10) um je einen pro 3 Stufen bis 8 Tropfen (Stufe 31+), die Deckkraft steigt mit. Zufällige Positionen, Laufzeiten (12–30s) und negative Delays verteilen die Tropfen; bei `prefers-reduced-motion` gibt es statt Animation statische kurze Blutspuren am oberen Rand. Der Layer wird nur neu aufgebaut, wenn sich die Effekt-Anzahlen ändern, damit laufende Animationen nicht zurückspringen.
+
+**Weitere Eskalationsstufen im selben Layer:**
+- **Stufe 16+ — Blutflecken:** Dunkle runde Flecken (60–160px, zufällige Positionen) blühen langsam auf und verblassen wieder (`stainBloom`, 22–42s Zyklen); Anzahl wächst von 1 (Stufe 16) um je einen pro 4 Stufen bis 5–6 (Stufe 32+), Deckkraft steigt mit. Bei `prefers-reduced-motion` statische schwache Flecken.
+- **Stufe 30+ — Titel-Zucken:** `<body>` bekommt zusätzlich die Klasse `.max-corruption`; der App-Titel zuckt einmal pro 7s-Zyklus kurz zur Seite (`titleTwitch`, kombiniert mit dem bestehenden `titleFlicker`). Der bestehende reduced-motion-Block deckt auch diese Animation ab.
+
+Bewusst verzichtet wird auf Ganzbild-Blitze o.ä. (Photosensitivitäts-Risiko) — alle Effekte sind langsam und lokal begrenzt.
+
 **Hintergrundbild:** `bg.png` liegt als fixer Layer (`#bg-layer`, `z-index:-1`) hinter dem gesamten Inhalt, standardmäßig unsichtbar (`--bg-image-opacity: 0`). Die Opacity steigt mit derselben Stufe linear bis max. 0.55 bei Stufe 33. Das Bild wird per CSS (`grayscale` + `contrast` + roter `mix-blend-mode: multiply`-Overlay) rot eingefärbt, ohne die Originaldatei zu verändern.
 
 **Titel-Freischaltung für das höchste Cultwesen:** Mit steigender Stufe schaltet `KING_TITLE_TIERS` neue Titel+Emoji-Kombinationen frei, die in der Figur-Detailansicht wählbar werden (gesperrte Stufen erscheinen als "🔒 ???"):
@@ -154,6 +162,8 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Spieler startet mit genau einer Figur (dem eigenen höchsten Cultwesen), alle anderen müssen gescannt werden | ✅ |
 | 14 freischaltbare Titel+Emoji-Kombinationen für das höchste Cultwesen (Stufe 1 bis 33), keine freie Name-/Emoji-Eingabe | ✅ |
 | Rot eingefärbter Hintergrund-Layer (`bg.png`) wird mit Sammelfortschritt zunehmend sichtbar | ✅ |
+| Blut-Layer: ab Stufe 10 laufen Blutstropfen vom oberen Rand, 1–8 Tropfen je nach Stufe, respektiert `prefers-reduced-motion` (statische Spuren) | ✅ |
+| Eskalation ab Stufe 16: aufblühende Blutflecken (1–6 je nach Stufe); ab Stufe 30: gelegentliches Titel-Zucken (`.max-corruption`) — beides reduced-motion-sicher, keine Ganzbild-Blitze | ✅ |
 | App-Icons (192/512/maskable/Favicon) aus `icon.png` generiert | ✅ |
 | Geheime Figur `👾 Glitch`: wird bei ungültigem NFC-Scan freigeschaltet, nicht steuerbar, bewegt sich zu Zugbeginn mit 50% Chance selbst und beendet danach sofort den Zug | ✅ |
 | Zugzwang-Prüfung: eine Seite ohne gültigen Zug verliert die Schlacht sofort | ✅ |
