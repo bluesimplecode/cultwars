@@ -755,11 +755,19 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
     <p>Sammle & kämpfe mit deinen Figuren</p>
   </div>
 
-  <button class="nfc-btn" onclick="scanNFC()">
+  <button class="nfc-btn" id="scan-nfc-btn" onclick="scanNFC()">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8.5 8.5c1-1 2.5-1.5 3.5-1.5"/><path d="M7 12a5 5 0 0 1 5-5"/><path d="M5.5 15.5A9 9 0 0 1 12 3"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
     <span>Figur scannen</span>
     <small>NFC-Tag an die Rückseite halten</small>
   </button>
+  <!-- Ohne Web NFC: Sammlung anderer Spieler per QR-Code empfangen (statt Scan-Button) -->
+  <button class="nfc-btn" id="receive-btn" onclick="startCollectionReceive()" style="display:none;">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3z"/></svg>
+    <span>Figuren empfangen</span>
+    <small>QR-Code eines anderen Spielers scannen</small>
+  </button>
+  <!-- Mit Web NFC: eigene Sammlung als QR-Code für Geräte ohne NFC teilen -->
+  <button class="action-btn secondary" id="share-btn" onclick="showCollectionShare()" style="display:none; width:calc(100% - 32px); margin:0 16px 8px;">📤 Figuren teilen (QR-Code)</button>
   <div id="nfc-support-note" style="text-align:center; font-size:11px; color:var(--text3); margin:-4px 16px 8px;"></div>
 
   <div style="padding: 0 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
@@ -875,6 +883,18 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   <div class="card">
     <div class="card-title">Figur-Performance</div>
     <div id="stats-list"></div>
+  </div>
+
+  <div class="card" id="found-graph-card" style="display:none;">
+    <div class="card-title">Fund-Historie</div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <button id="found-prev" aria-label="Vorheriger Tag" onclick="shiftFoundDay(-1)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text2); border-radius:8px; width:34px; height:34px; font-size:18px; cursor:pointer;">‹</button>
+      <div id="found-day-label" style="font-size:13px; font-weight:600;" aria-live="polite"></div>
+      <button id="found-next" aria-label="Nächster Tag" onclick="shiftFoundDay(1)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text2); border-radius:8px; width:34px; height:34px; font-size:18px; cursor:pointer;">›</button>
+    </div>
+    <div id="found-graph" style="display:flex; align-items:flex-end; gap:2px; height:90px;"></div>
+    <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text3); margin-top:4px;" aria-hidden="true"><span>0 Uhr</span><span>6</span><span>12</span><span>18</span><span>23 Uhr</span></div>
+    <div style="font-size:10px; color:var(--text3); text-align:center; margin-top:6px;">Wischen oder Pfeile: Tag wechseln — nur Tage mit Funden</div>
   </div>
 
   <div class="card">
@@ -1076,6 +1096,34 @@ QRCode.CorrectLevel = QRErrorCorrectLevel;
   </div>
 </div>
 
+<!-- Sammlung teilen/empfangen per QR-Code (für Geräte ohne Web NFC) -->
+<div class="modal-overlay" id="share-modal" onclick="if(event.target===this) closeShareModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <div class="modal-handle"></div>
+    <div style="font-size:18px; font-weight:700; margin-bottom:8px;" id="share-title">Figuren teilen</div>
+
+    <div id="share-show-view" style="display:none;">
+      <div style="font-size:12px; color:var(--text2); margin-bottom:12px;">Der andere Spieler wählt auf seinem Gerät "Figuren empfangen" und scannt diesen Code. Es werden nur Figuren-Freischaltungen übertragen, keine Statistiken.</div>
+      <div id="share-qr-canvas" style="display:flex; justify-content:center; background:#fff; border-radius:12px; padding:12px; margin-bottom:8px;"></div>
+      <div style="font-size:11px; color:var(--text3); text-align:center; margin-bottom:12px;" id="share-qr-info"></div>
+    </div>
+
+    <div id="share-receive-view" style="display:none;">
+      <div style="font-size:12px; color:var(--text2); margin-bottom:12px;">Scanne den QR-Code, den der andere Spieler über "Figuren teilen" anzeigt. Du schaltest nur Figuren frei, die dir noch fehlen.</div>
+      <div id="share-scan-wrap" style="display:none;">
+        <div style="position:relative; border-radius:12px; overflow:hidden; background:#000; margin:0 0 12px;">
+          <video id="share-scan-video" autoplay playsinline muted style="width:100%; display:block; max-height:280px; object-fit:cover;"></video>
+          <div style="position:absolute; inset:0; border:2px solid rgba(16,185,129,0.6); border-radius:12px; pointer-events:none;"></div>
+        </div>
+        <div style="font-size:12px; color:var(--text2); text-align:center; margin-bottom:12px;" id="share-scan-status">Suche nach QR-Code...</div>
+      </div>
+      <button class="action-btn" id="share-scan-btn" onclick="startShareScan()">📷 Kamera öffnen & scannen</button>
+    </div>
+
+    <button class="action-btn secondary" onclick="closeShareModal()">Schließen</button>
+  </div>
+</div>
+
 <!-- Ergebnis-Rückkanal (Host → Sender): erscheint automatisch beim Host, sobald
      eine lokale Multiplayer-Schlacht endet, mit einem QR-Code für den Sender. -->
 <div class="modal-overlay" id="mp-result-modal" onclick="closeMpResultModal(event)">
@@ -1217,7 +1265,7 @@ function defaultSaveData() {
     // Der Spieler beginnt nur mit dem eigenen höchsten Cultwesen (Pflichtfigur,
     // nie per NFC zu finden). Alle anderen Figuren müssen erst gescannt werden.
     collection: {
-      1: { owned:true, kills:0, uses:0, isNew:false },
+      1: { owned:true, kills:0, uses:0, isNew:false, foundAt: Date.now() },
     },
     // Selbst erstellte / per NFC gescannte Figuren, die nicht im fest
     // eingebauten FIGURES_CATALOG stehen. Müssen hier mitgespeichert werden,
@@ -1343,7 +1391,7 @@ function importSaveDataFile(input) {
     .sort((a, b) => a.id - b.id)
     .slice(0, n);
   unlocked.forEach(f => {
-    saveData.collection[f.id] = { owned: true, kills: 0, uses: 0, isNew: false };
+    saveData.collection[f.id] = { owned: true, kills: 0, uses: 0, isNew: false, foundAt: Date.now() };
   });
   console.info(`🧪 Cheat aktiv: ${unlocked.length} Katalogfiguren freigeschaltet (?maxed=${n})`);
 })();
@@ -1362,7 +1410,7 @@ function rebuildFigures() {
     const tier = owned.title ? KING_TITLE_TIERS.find(t => t.title === owned.title) : null;
     const emoji = (tier && tier.emoji) || owned.emoji || f.emoji;
     const name = owned.title ? `${owned.title} ${f.name}` : f.name;
-    return { ...f, emoji, name, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned };
+    return { ...f, emoji, name, kills: owned.kills, uses: owned.uses, new: owned.isNew, owned: owned.owned, foundAt: owned.foundAt || null };
   });
   applyCorruptionTheme();
 }
@@ -1526,8 +1574,13 @@ rebuildFigures();
 // Eine Figur als gesammelt markieren (z.B. nach NFC-Scan)
 function addFigureToCollection(figId) {
   if (!saveData.collection[figId]) {
-    saveData.collection[figId] = { owned:true, kills:0, uses:0, isNew:true };
+    saveData.collection[figId] = { owned:true, kills:0, uses:0, isNew:true, foundAt: Date.now() };
   } else {
+    // Fund-Zeitpunkt nur beim erstmaligen Freischalten setzen — ein erneuter
+    // Scan einer bereits besessenen Figur überschreibt ihn nicht.
+    if (!saveData.collection[figId].owned && !saveData.collection[figId].foundAt) {
+      saveData.collection[figId].foundAt = Date.now();
+    }
     saveData.collection[figId].owned = true;
   }
   saveSave();
@@ -1700,9 +1753,82 @@ function renderStats() {
     row.appendChild(info);
     list.appendChild(row);
   });
+  renderFoundGraph();
 }
 
 function sizeLabel(s) { return s===1?'1×1':s===4?'2×2':'3×3'; }
+
+// --- Fund-Historie: Balkendiagramm Funde pro Stunde für einen Tag ---
+// Es werden nur Tage angeboten, an denen mindestens eine Figur gefunden wurde;
+// gewechselt wird per Wisch-Geste oder über die Pfeil-Buttons.
+// Ausgewählter Tag als 'YYYY-MM-DD'-Schlüssel (nicht als Index, damit die
+// Auswahl stabil bleibt, wenn neue Fund-Tage dazukommen); null = neuester Tag
+let foundDayKey = null;
+
+// Liste [ ['YYYY-MM-DD', Array(24) mit Funden pro Stunde], ... ], aufsteigend sortiert
+function foundDays() {
+  const byDay = new Map();
+  Object.values(saveData.collection).forEach(c => {
+    if (!c.owned || !c.foundAt) return;
+    const d = new Date(c.foundAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!byDay.has(key)) byDay.set(key, Array(24).fill(0));
+    byDay.get(key)[d.getHours()]++;
+  });
+  return [...byDay.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+}
+
+function renderFoundGraph() {
+  const card = document.getElementById('found-graph-card');
+  if (!card) return;
+  const days = foundDays();
+  if (!days.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  let idx = days.findIndex(d => d[0] === foundDayKey);
+  if (idx < 0) idx = days.length - 1;
+  foundDayKey = days[idx][0];
+  const [key, hours] = days[idx];
+  const [y, m, d] = key.split('-');
+  const gesamt = hours.reduce((a, b) => a + b, 0);
+  document.getElementById('found-day-label').textContent = `${d}.${m}.${y} — ${gesamt} Fund${gesamt === 1 ? '' : 'e'}`;
+  document.getElementById('found-prev').disabled = idx === 0;
+  document.getElementById('found-next').disabled = idx === days.length - 1;
+  const graph = document.getElementById('found-graph');
+  graph.innerHTML = '';
+  const max = Math.max(1, ...hours);
+  hours.forEach((count, h) => {
+    const bar = document.createElement('div');
+    bar.style.cssText = `flex:1; border-radius:2px 2px 0 0; background:rgba(var(--accent-rgb),${count ? 0.75 : 0.15}); height:${count ? Math.max(8, Math.round(count / max * 100)) : 2}%;`;
+    bar.title = `${h}:00 Uhr — ${count}`;
+    bar.setAttribute('role', 'img');
+    bar.setAttribute('aria-label', `${h} Uhr: ${count} Fund${count === 1 ? '' : 'e'}`);
+    graph.appendChild(bar);
+  });
+}
+
+function shiftFoundDay(delta) {
+  const days = foundDays();
+  let idx = days.findIndex(d => d[0] === foundDayKey);
+  if (idx < 0) idx = days.length - 1;
+  const neu = idx + delta;
+  if (neu < 0 || neu >= days.length) return;
+  foundDayKey = days[neu][0];
+  renderFoundGraph();
+}
+
+// Wisch-Geste auf der Graph-Karte: nach rechts = früherer Tag, nach links = späterer
+(() => {
+  const card = document.getElementById('found-graph-card');
+  if (!card) return;
+  let touchX = null;
+  card.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+  card.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 40) shiftFoundDay(dx > 0 ? -1 : 1);
+  }, { passive: true });
+})();
 
 // Baut ein Element mit textContent statt innerHTML — Figurendaten (Name/Emoji/Story)
 // können von externen NFC-Tags oder importierten Speicherständen stammen und
@@ -1763,9 +1889,13 @@ function openFigModal(f) {
     mc.appendChild(c);
   }));
 
+  const foundTxt = f.foundAt
+    ? new Date(f.foundAt).toLocaleString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) + ' Uhr'
+    : 'Unbekannt';
   document.getElementById('m-stats').innerHTML = `
     <div class="stat-row"><div class="stat-emoji">⚔️</div><div class="stat-info"><div class="stat-name">Kills gesamt</div><div class="stat-nums">${f.kills}</div></div></div>
-    <div class="stat-row"><div class="stat-emoji">🎯</div><div class="stat-info"><div class="stat-name">Mal gewählt</div><div class="stat-nums">${f.uses}</div></div></div>`;
+    <div class="stat-row"><div class="stat-emoji">🎯</div><div class="stat-info"><div class="stat-name">Mal gewählt</div><div class="stat-nums">${f.uses}</div></div></div>
+    <div class="stat-row"><div class="stat-emoji">🕰️</div><div class="stat-info"><div class="stat-name">Gefunden am</div><div class="stat-nums">${foundTxt}</div></div></div>`;
 
   const modal = document.getElementById('fig-modal');
   const wasOpen = modal.classList.contains('open');
@@ -1826,6 +1956,8 @@ document.addEventListener('keydown', (e) => {
     e.target.click();
     return;
   }
+  const shareModal = document.getElementById('share-modal');
+  if (shareModal && shareModal.classList.contains('open') && e.key === 'Escape') { closeShareModal(); return; }
   const modal = document.getElementById('fig-modal');
   if (!modal.classList.contains('open')) return;
   if (e.key === 'Escape') { closeModal(); return; }
@@ -3320,6 +3452,107 @@ function handleScannedResult(raw, statusEl) {
   return true;
 }
 
+// ---------------------------------------------------------------
+// SAMMLUNG TEILEN/EMPFANGEN PER QR-CODE
+// Für Geräte ohne Web NFC: statt des Scan-Buttons gibt es "Figuren empfangen"
+// (QR-Code eines anderen Spielers scannen). NFC-Geräte haben zusätzlich
+// "Figuren teilen" und zeigen ihre Sammlung als QR-Code an. Übertragen werden
+// nur Freischaltungen — keine Kills/Uses/Statistiken.
+// ---------------------------------------------------------------
+let shareQrInstance = null;
+
+function buildCollectionPayload() {
+  // Glitch bleibt geheim — sie soll nur über einen ungültigen Scan entdeckt werden
+  const ids = FIGURES.filter(f => f.owned && !f.isGlitch).map(f => f.id);
+  // Eigene Figuren außerhalb des eingebauten Katalogs brauchen die volle
+  // Definition, sonst kann der Empfänger sie nicht darstellen
+  const custom = saveData.customFigures.filter(f => ids.includes(f.id) && !f.isGlitch);
+  return { type: 'figurkampf-collection', ids, custom };
+}
+
+function showCollectionShare() {
+  document.getElementById('share-title').textContent = 'Figuren teilen';
+  document.getElementById('share-show-view').style.display = 'block';
+  document.getElementById('share-receive-view').style.display = 'none';
+  document.getElementById('share-modal').classList.add('open');
+  const payload = buildCollectionPayload();
+  const canvas = document.getElementById('share-qr-canvas');
+  canvas.innerHTML = '';
+  try {
+    shareQrInstance = new QRCode(canvas, { text: JSON.stringify(payload), width: 280, height: 280, correctLevel: QRCode.CorrectLevel.M });
+    document.getElementById('share-qr-info').textContent = `${payload.ids.length} Figur(en) im Code`;
+  } catch (e) {
+    console.warn('Sammlungs-QR konnte nicht erzeugt werden:', e);
+    canvas.innerHTML = '<div style="color:var(--red); font-size:13px; padding:20px;">⚠️ Sammlung zu groß für einen QR-Code.</div>';
+    document.getElementById('share-qr-info').textContent = '';
+  }
+}
+
+function startCollectionReceive() {
+  document.getElementById('share-title').textContent = 'Figuren empfangen';
+  document.getElementById('share-show-view').style.display = 'none';
+  document.getElementById('share-receive-view').style.display = 'block';
+  document.getElementById('share-scan-btn').style.display = 'block';
+  document.getElementById('share-scan-wrap').style.display = 'none';
+  document.getElementById('share-modal').classList.add('open');
+  startShareScan();
+}
+
+function startShareScan() {
+  startQRScan('share-scan-video', 'share-scan-status', 'share-scan-btn', 'share-scan-wrap', handleScannedCollection);
+}
+
+function handleScannedCollection(raw, statusEl) {
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(e) { statusEl.textContent = '❌ QR-Code enthält keine gültigen Daten. Weiter scannen...'; return false; }
+  if (!data || data.type !== 'figurkampf-collection' || !Array.isArray(data.ids)) {
+    statusEl.textContent = '❌ QR-Code ist keine Cultwars-Sammlung. Weiter scannen...';
+    return false;
+  }
+  statusEl.textContent = '✅ Sammlung empfangen!';
+  stopScan();
+
+  // Unbekannte eigene Figuren des Senders zuerst in den Katalog aufnehmen
+  (Array.isArray(data.custom) ? data.custom : []).forEach(cf => {
+    if (!cf || typeof cf.id !== 'number' || FIGURES_CATALOG.find(f => f.id === cf.id)) return;
+    const fig = {
+      id: cf.id, name: cf.name || 'Unbenannt', emoji: cf.emoji || '❓',
+      size: cf.size ?? 1, story: cf.story ?? '',
+      move: cf.move ?? [[0,0,0,0,0],[0,0,0,0,0],[0,0,2,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      moveMode: cf.moveMode === 'slide' ? 'slide' : 'jump',
+    };
+    FIGURES_CATALOG.push(fig);
+    saveData.customFigures.push(fig);
+  });
+
+  // Nur fehlende Figuren freischalten — Statistiken werden nicht übernommen
+  let neu = 0, unbekannt = 0;
+  data.ids.forEach(id => {
+    if (isGlitchId(id)) return; // Glitch bleibt geheim
+    if (!FIGURES_CATALOG.find(f => f.id === id)) { unbekannt++; return; }
+    const c = saveData.collection[id];
+    if (c && c.owned) return;
+    saveData.collection[id] = { owned: true, kills: 0, uses: 0, isNew: true, foundAt: Date.now() };
+    neu++;
+  });
+  saveSave();
+  rebuildFigures();
+  renderCollection();
+  renderKodex();
+  renderStats();
+  let msg = neu > 0 ? `📥 ${neu} neue Figur(en) freigeschaltet!` : '📥 Keine neuen Figuren — du hast schon alle aus diesem Code.';
+  if (unbekannt > 0) msg += ` (${unbekannt} unbekannte übersprungen)`;
+  showToast(msg);
+  setTimeout(() => closeShareModal(), 800);
+  return true;
+}
+
+function closeShareModal() {
+  stopScan();
+  document.getElementById('share-modal').classList.remove('open');
+}
+
 function stopScan() {
   if (scanRAF) { cancelAnimationFrame(scanRAF); scanRAF = null; }
   if (scanStream) {
@@ -3406,7 +3639,14 @@ const nfcNote = document.getElementById('nfc-support-note');
 if (nfcNote) {
   nfcNote.textContent = nfcSupported()
     ? '✅ NFC verfügbar auf diesem Gerät'
-    : '⚠️ Kein NFC erkannt — Chrome auf Android nötig';
+    : '⚠️ Kein NFC erkannt — Figuren kommen per QR-Code von anderen Spielern';
+}
+// Mit Web NFC: Scannen + Teilen. Ohne: stattdessen Empfangen per QR-Code.
+if (nfcSupported()) {
+  document.getElementById('share-btn').style.display = 'block';
+} else {
+  document.getElementById('scan-nfc-btn').style.display = 'none';
+  document.getElementById('receive-btn').style.display = 'flex';
 }
 
 // PWA: Service Worker für Offline-Caching registrieren (nur über HTTPS/localhost verfügbar)

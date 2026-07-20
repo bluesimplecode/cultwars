@@ -8,6 +8,8 @@
 - Figuren per NFC-Tag scannen und der eigenen Sammlung hinzufügen
 - Jede Figur hat: Name, Emoji als Sprite, Größe (1×1 / 2×2 / 3×3 Felder), Bewegungsmuster (5×5 Grid wie Schach), Bewegungsart (springt/gleitet), Story-Text
 - Neue, noch nicht gescannte Figuren sind im Kodex als `???` verschleiert sichtbar
+- Zu jeder Figur wird der Fund-Zeitpunkt gespeichert (`foundAt` im Speicherstand, wandert automatisch durch Export/Import mit) und in der Figur-Detailansicht als "Gefunden am" angezeigt; die Statistik-Seite zeigt eine Fund-Historie: Balkendiagramm Funde pro Stunde für einen Tag, Tageswechsel per Wisch-Geste oder Pfeil-Buttons, es erscheinen nur Tage mit Funden
+- Geräte ohne Web NFC zeigen statt "Figur scannen" einen "Figuren empfangen"-Button: per Kamera wird der Sammlungs-QR-Code eines anderen Spielers gescannt und nur fehlende Figuren werden freigeschaltet (keine Statistiken, Glitch bleibt ausgeschlossen). NFC-Geräte haben zusätzlich "Figuren teilen": die eigene Sammlung als QR-Code (Katalog-IDs + volle Definitionen eigener Nicht-Katalog-Figuren)
 - Beim ersten Öffnen einer neu gescannten Figur verschwindet der NEU-Badge
 - Der Spieler startet mit genau einer Figur: dem eigenen **Höchsten Cultwesen** (Katalog-ID 1, der Pflicht-König) — muss nie per NFC gefunden werden, alle anderen Figuren müssen erst gescannt werden
 - Der Basis-Katalog enthält 31 fest eingebaute Standardfiguren (Katalog-IDs 2–7 und 9–33, aus `figuren-export.json` übernommen); dieselben Figuren liegen als Standard-Bibliothek im Admin-Tool und sind dort bearbeitbar. Achtung: Änderungen im Admin-Tool wirken nur auf Bibliothek/NFC-Tags — bei bekannten Katalog-IDs schaltet ein Scan in der Haupt-App nur frei, die dort fest eingebaute Version der Figur gewinnt
@@ -124,6 +126,8 @@ Ein gewählter Titel wird dem festen Basisnamen "Höchstes Cultwesen" vorangeste
 | Neue Figuren via NFC auch zum Katalog hinzufügen, falls unbekannt | ✅ |
 | Kodex mit Silhouette für ungescannte Figuren | ✅ |
 | Statistiken (Kills, Nutzung, Spiele/Siege persistent) | ✅ |
+| Fund-Zeitpunkt pro Figur (`foundAt`), Anzeige in der Detailansicht, Fund-Historie-Graph (Funde/Stunde pro Tag, Swipe/Pfeile, nur Tage mit Funden), in Export/Import enthalten | ✅ |
+| Sammlung teilen/empfangen per QR-Code: ohne Web NFC "Figuren empfangen" statt Scan-Button, mit NFC zusätzlich "Figuren teilen" — nur Freischaltungen, keine Statistiken, Glitch ausgenommen, Custom-Figuren mit voller Definition | ✅ |
 | localStorage-Persistenz (`figurkampf_save_v1`) | ✅ |
 | Spielfeldgröße wählbar | ✅ |
 | Keine manuelle Figuren-Auswahl mehr — Solo und Multiplayer (Host + Sender) nehmen automatisch alle besessenen Figuren mit | ✅ |
